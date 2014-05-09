@@ -1,0 +1,13 @@
+"archives" of Wiiceivers past
+
+Wiiceiver_84 was based on the ATtiny84, a 14-pin Arduino-compatible
+microcontroller.  It's significantly smaller than the ATmega328,
+but doesn't have hardware support for I2C or PWM.  I successfully
+emulated these in software (with significant help from available
+libraries) but was having trouble with the Nyko Kama, and it can't 
+present both Serial output as well as I2C and PWM -- hard to debug.
+SN01 == Serial Number 1, it was soldered on hardware.  Works with 
+a wired chuck, but see above re: debugging the Nyko.
+
+Wiiceiver_85 was the same, but for ATtiny85: 8 pins, but otherwise
+similar to the '84.
