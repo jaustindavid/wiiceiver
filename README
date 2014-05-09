@@ -1,0 +1,30 @@
+http://austindavid.com/t/wiiceiver-github
+
+The Wiiceiver is a drop-in "plug and play" replacement for a
+standard R/C receiver.  It has a Nintendo Wii Nunchuck 
+connection, a 3-pin ESC connector, and an available connector
+for an external BEC if required.  
+
+The Wiiceiver is intended for use on an electric skateboard.
+The Y-axis (up/down) is throttle -- push up to speed up,
+middle is neutral, down is brakes.  These function roughly
+the same as on a standard RC transmitter.
+
+Wiiceiver also implements a few additional functions:
+- X/Y joystick axes, X/Y/Z accelerometers, and the two buttons 
+  are monitored to confirm that the nunchuck is "active" -- 
+  as opposed to dropped or low battery.  When "inactive" the
+  wiiceiver returns to neutral, and will not re-start until 
+  it detects and active neutral signal
+- C button is "cruise control" -- press and hold C to maintain
+  the current throttle level.  Drop the joystick to neutral to
+  cruise.  While holding C, pressing the joystick "up" will
+  increase speed gently, "down" will decrease speed.  
+  Releasing C returns to neutral.
+- Control smoothing: Wiiceiver implemenets an exponential 
+  algorithm to smooth the controller input.  As currently
+  tuned, an instant 0-100% throttle input will result in a
+  gradual change to the ESC over the course of about 1s.
+
+It has been tested to work with a corded Nintendo nunchuck, a 
+Memorex wireless nunchuck, and a Nyko Kama wireless nunchuck.
