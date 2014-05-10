@@ -1,26 +1,3 @@
-#include <Wire.h>
-#include <Servo.h>
-#include <EEPROM.h>
-
-
-#define DEBUGGING
-
-#include "Blinker.h"
-
-// #define DEBUGGING_SMOOTHER
-#include "Smoother.h"
-
-#define DEBUGGING_CHUCK
-// #define DEBUGGING_CHUCK_ACTIVITY
-#define WII_ACTIVITY_COUNTER 100  // once per 20ms; 50 per second
-#include "Chuck.h"
-
-// #define DEBUGGING_ESC
-#include "ElectronicSpeedController.h"
-
-
-// #define DEBUGGING_THROTTLE
-
 /*
  * Wiiceiver hardware definitions
  * don't change these without changing the board 
@@ -39,11 +16,41 @@
 
 
 
-Chuck chuck = Chuck();
+#include <Wire.h>
+#include <Servo.h>
+#include <EEPROM.h>
+
+
+// #define DEBUGGING
+
+#include "Blinker.h"
+
+// #define DEBUGGING_SMOOTHER
+#include "Smoother.h"
+
+// #define DEBUGGING_CHUCK
+// #define DEBUGGING_CHUCK_ACTIVITY
+#define WII_ACTIVITY_COUNTER 100  // once per 20ms; 50 per second
+#include "Chuck.h"
+
+// #define DEBUGGING_ESC
+#include "ElectronicSpeedController.h"
+
+// #define DEBUGGING_THROTTLE
+#define MIN_THROTTLE 0.05        // the lowest throttle to send the ESC
+#define THROTTLE_CC_BUMP 0.002   // CC = 0.1% throttle increase; 50/s = 10s to hit 100% on cruise
+#define THROTTLE_SMOOTHNESS 0.2  // default "smoothing" factor
+#include "Throttle.h"
+
+
+
+
+
+Chuck chuck;
 ElectronicSpeedController ESC;
 Blinker green = Blinker(GREEN_LED);
 Blinker red = Blinker(RED_LED);
-Smoother smoother = Smoother(0.2);
+Throttle throttle;
 
 
 // maybe calibrate the joystick:
@@ -104,14 +111,14 @@ void splashScreen() {
 
 
 // flash the LEDs to indicate throttle position
-void updateLEDs(float throttle) {
-  if (throttle == 0) {
+void updateLEDs(Throttle throttle) {
+  if (throttle.getThrottle() == 0) {
     green.update(1);
     red.update(1);
   } else {
-    int bps = abs(int(throttle * 20));
+    int bps = abs(int(throttle.getThrottle() * 20));
 
-    if (throttle > 0) {
+    if (throttle.getThrottle() > 0) {
       green.update(bps);
       red.update(1);
     } else {
@@ -210,55 +217,14 @@ bool startChuck() {
 
 
 
-#define MIN_THROTTLE 0.05      // the lowest throttle to send the ESC
-#define THROTTLE_CC_BUMP 0.003 // CC = 0.1% throttle increase; 50/s = 10s to hit 100% on cruise
-float lastThrottle = 0;        // global-ish
-float getThrottle() {
-  float throttle;
-
-#ifdef DEBUGGING_THROTTLE
-    Serial.print("Throttle ");
-#endif
-
-  if (chuck.C) { // cruise control!
-#ifdef DEBUGGING_THROTTLE
-    Serial.print("CC: last = ");
-    Serial.print(lastThrottle);
-    Serial.print(", ");
-#endif
-    throttle = lastThrottle;
-    if (chuck.Y > 0.5 && throttle < 1.0) {
-      throttle += THROTTLE_CC_BUMP;
-    } else if (chuck.Y < -0.5 && throttle > -1.0) {
-      throttle -= THROTTLE_CC_BUMP;
-    } 
-      
-  } else {
-    throttle = chuck.Y;
-
-    if (abs(throttle) < MIN_THROTTLE) {
-      throttle = 0;
-    }
-  }
-
-#ifdef DEBUGGING_THROTTLE
-    Serial.print("setting ");
-    Serial.println(throttle);
-#endif
-  
-  lastThrottle = throttle;
-  return smoother.compute(throttle);
-} // float getThrottle()
-
-
-
 void handleInactivity() {
 #ifdef DEBUGGING
   Serial.print(millis());
   Serial.println(": handling inactivity");
 #endif
-  lastThrottle = 0; // kills cruise control
-  smoother.zero();  // kills throttle history
+  // lastThrottle = 0; // kills cruise control
+  // smoother.zero();  // kills throttle history
+  throttle.zero();
   ESC.setLevel(0);
   do {    
     freakOut();
@@ -301,8 +267,10 @@ void setup() {
   red.init();
 
   setup_pins();
-  splashScreen();
+  ESC.init(ESC_PPM);
   
+  splashScreen();
+
   delay(5000); // hold for nunchuck powerup
 
 #ifdef DEBUGGING
@@ -310,10 +278,10 @@ void setup() {
 #endif
   green.high();
   red.high();
-  if (! startChuck()) {
-    handleInactivity();
-  } else {
+  if (startChuck()) {
     maybeCalibrate();
+  } else {
+    handleInactivity();
   }
 #ifdef DEBUGGING
   Serial.println("Nunchuck is active!");
@@ -324,14 +292,12 @@ void setup() {
   
   green.update(1);
   red.update(1);
-  
-  ESC.init(ESC_PPM);
 } // void setup()
 
 
 
 void loop() {
-  static float lastThrottle = 0;
+  static float lastThrottleValue = 0;
   unsigned long startMS = millis();
   green.run();
   red.run();
@@ -344,10 +310,10 @@ void loop() {
     handleInactivity();
     // delay(100);
   } else {
-    float throttle = getThrottle();
-    if (throttle != lastThrottle) {
+    float throttleValue = throttle.update(chuck);
+    ESC.setLevel(throttleValue);
+    if (throttleValue != lastThrottleValue) {
       updateLEDs(throttle);
-      ESC.setLevel(throttle);
 #ifdef DEBUGGING
       Serial.print("y=");
       Serial.print(chuck.Y, 4);
@@ -357,9 +323,9 @@ void loop() {
       Serial.print(", z=");
       Serial.print(chuck.Z);
       Serial.print(", ");
-      Serial.println(throttle, 4); 
+      Serial.println(throttleValue, 4); 
 #endif
-      lastThrottle = throttle;
+      lastThrottleValue = throttleValue;
     }
     int delayMS = constrain(startMS + 20 - millis(), 5, 20);
     // Serial.print("sleeping "); Serial.println(delayMS);

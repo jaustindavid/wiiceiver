@@ -11,16 +11,20 @@ class ElectronicSpeedController {
 
 private:
   Servo _esc;
+  int angle;   // the angle most recently written to _esc;
   
 public:
 
 void init(int pin) {
+  angle = ESC_CENTER;
+  
 #ifdef DEBUGGING_ESC
   Serial.print("attaching to pin #");
   Serial.println(pin);
 #endif
 
   _esc.attach(pin);
+  
 #ifdef DEBUGGING
   Serial.println("initializing ESC...");
 #endif
@@ -28,26 +32,35 @@ void init(int pin) {
     _esc.write(ESC_CENTER);
     delay(20);
   }
-  // _sweep();
+
+  delay(100);
 #ifdef DEBUGGING_ESC
   Serial.println("done");
 #endif
 }
 
 
-// input: -1 .. 1
-// output: 0 .. 180
+/*
+ * input: -1 .. 1
+ * output: writes +/- ESC_MAX_ANGLE to _esc
+ * does *not* write the same angle twice -- possible interference with the PWM :(
+ */
 void setLevel(float level) {
-  int angle = (int)(ESC_CENTER + (ESC_MAX_ANGLE - ESC_CENTER) * level);
+  int newAngle = (int)(ESC_CENTER + (ESC_MAX_ANGLE - ESC_CENTER) * level);
+  if (newAngle != angle) {
 #ifdef DEBUGGING_ESC
-  Serial.print(F("ESC angle: "));
-  Serial.println(angle);
+    Serial.print(millis());
+    Serial.print(F(": ESC angle: "));
+    Serial.println(newAngle);
 #endif
-  _esc.write(angle);
-}
+    angle = newAngle;
+    _esc.write(angle);
+  }
+} // void setLevel(float level)
 
 
 private:
+// unused code
 #define STEP_DELAY 20
   void _sweep(void) {
     setLevel(0);
@@ -66,7 +79,7 @@ private:
     }
     setLevel(0);
     delay(STEP_DELAY);
-  }
-};
+  } // void _sweep(void)
+};  // class ElectronicSpeedController 
 
 #endif

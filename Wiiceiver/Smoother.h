@@ -1,20 +1,24 @@
 #ifndef SMOOTHER_H
 #define SMOOTHER_H
 
+/*
+ * A helper class -- smooths the throttle input
+ * 
+ */
+
 class Smoother {
   private:
     float value;
-    float factor;
     
   public:
-    Smoother(float newFactor) {
-      factor = newFactor;
+    Smoother(void) {
       value = 0;
     }
+    
 
-#define MIN_STEP 0.005
+#define MIN_STEP 0.003
 
-    float compute(float target) {
+    float compute(float target, float factor) {
       float step = (target - value) * factor;
       
 #ifdef DEBUGGING_SMOOTHER
@@ -42,11 +46,13 @@ class Smoother {
       Serial.println(value, 4);
 #endif
       return value;
-    }
-    
+    }  // float compute(float target, float factor)
+
+
+    // reset the internal smoothing value, to quickly seek zero
     void zero() {
       value = 0;
-    }
+    } // void zero()
 };
 
 #endif
