@@ -128,7 +128,7 @@ private:
       lastActivity = activity;
     }
     
-#ifdef DEBUGGING_CHUCK
+#ifdef DEBUGGING_CHUCK_ACTIVITY
     Serial.print("CHUCK: ");
     for (int i = 0; i < 5; i++) {
       Serial.print(status[i], DEC);
@@ -150,7 +150,7 @@ public:
     byte storedY;
 
     storedY = EEPROM.read(0);
-#ifdef DEBUGGING
+#ifdef DEBUGGING_CHUCK
     Serial.print(F("Reading stored value: Y="));
     Serial.println(storedY);
 #endif
@@ -158,12 +158,12 @@ public:
     // sanity check: they shouldn't differ by more than 25 units (~10%)
     if (abs(storedY - DEFAULT_Y_ZERO) <= 25) {
       Y0 = storedY;
-#ifdef DEBUGGING
+#ifdef DEBUGGING_CHUCK
       Serial.println("Using stored value");
 #endif
 } 
     else {
-#ifdef DEBUGGING
+#ifdef DEBUGGING_CHUCK
       Serial.println("Ingoring stored value");
 #endif
     }
@@ -172,7 +172,7 @@ public:
 
   void writeEEPROM() {
     EEPROM.write(0, Y0);
-#ifdef DEBUGGING
+#ifdef DEBUGGING_CHUCK
     Serial.print("Storing value: Y=");
     Serial.println(Y0);	
 #endif	    
@@ -224,7 +224,7 @@ public:
     }
 
     _computeStatus();
-#ifdef DEBUGGING_CHUCK
+#ifdef DEBUGGING_CHUCK_ACTIVITY
    Serial.print("Active? ");
    Serial.println(isActive() ? "yes" : "no");
 #endif

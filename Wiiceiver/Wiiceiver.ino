@@ -3,14 +3,14 @@
 #include <EEPROM.h>
 
 
-// #define DEBUGGING
+#define DEBUGGING
 
 #include "Blinker.h"
 
 // #define DEBUGGING_SMOOTHER
 #include "Smoother.h"
 
-// #define DEBUGGING_CHUCK
+#define DEBUGGING_CHUCK
 // #define DEBUGGING_CHUCK_ACTIVITY
 #define WII_ACTIVITY_COUNTER 100  // once per 20ms; 50 per second
 #include "Chuck.h"
@@ -199,6 +199,7 @@ bool startChuck() {
     Serial.println("(Re)starting the nunchuck");
 #endif
     chuck.setup();
+    chuck.readEEPROM();
     tries ++;
     if (chuck.isActive()) {
       return true;
@@ -311,6 +312,8 @@ void setup() {
   red.high();
   if (! startChuck()) {
     handleInactivity();
+  } else {
+    maybeCalibrate();
   }
 #ifdef DEBUGGING
   Serial.println("Nunchuck is active!");
