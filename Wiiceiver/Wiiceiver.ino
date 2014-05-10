@@ -2,6 +2,9 @@
 #include <Servo.h>
 #include <EEPROM.h>
 
+
+// #define DEBUGGING
+
 #include "Blinker.h"
 
 // #define DEBUGGING_SMOOTHER
@@ -12,10 +15,11 @@
 #define WII_ACTIVITY_COUNTER 100  // once per 20ms; 50 per second
 #include "Chuck.h"
 
-#define DEBUGGING_ESC
+// #define DEBUGGING_ESC
 #include "ElectronicSpeedController.h"
 
-#define DEBUGGING
+
+// #define DEBUGGING_THROTTLE
 
 /*
  * Wiiceiver hardware definitions
@@ -205,18 +209,18 @@ bool startChuck() {
 
 
 
-#define MIN_THROTTLE 0.05 // the lowest throttle to send the ESC
-#define THROTTLE_CC_BUMP 0.001 // CC = 0.1% throttle increase; 50/s = 10s to hit 100% on cruise
-float lastThrottle = 0;
+#define MIN_THROTTLE 0.05      // the lowest throttle to send the ESC
+#define THROTTLE_CC_BUMP 0.003 // CC = 0.1% throttle increase; 50/s = 10s to hit 100% on cruise
+float lastThrottle = 0;        // global-ish
 float getThrottle() {
   float throttle;
 
-#ifdef DEBUGGING
+#ifdef DEBUGGING_THROTTLE
     Serial.print("Throttle ");
 #endif
 
   if (chuck.C) { // cruise control!
-#ifdef DEBUGGING
+#ifdef DEBUGGING_THROTTLE
     Serial.print("CC: last = ");
     Serial.print(lastThrottle);
     Serial.print(", ");
@@ -236,7 +240,7 @@ float getThrottle() {
     }
   }
 
-#ifdef DEBUGGING
+#ifdef DEBUGGING_THROTTLE
     Serial.print("setting ");
     Serial.println(throttle);
 #endif
@@ -324,6 +328,7 @@ void setup() {
 
 
 void loop() {
+  static float lastThrottle = 0;
   unsigned long startMS = millis();
   green.run();
   red.run();
@@ -337,21 +342,21 @@ void loop() {
     // delay(100);
   } else {
     float throttle = getThrottle();
-    updateLEDs(throttle);
-    ESC.setLevel(throttle);
     if (throttle != lastThrottle) {
+      updateLEDs(throttle);
+      ESC.setLevel(throttle);
 #ifdef DEBUGGING
       Serial.print("y=");
-      Serial.print(chuck.Y);
+      Serial.print(chuck.Y, 4);
       Serial.print(", ");
       Serial.print("c=");
       Serial.print(chuck.C);      
       Serial.print(", z=");
       Serial.print(chuck.Z);
       Serial.print(", ");
-      Serial.println(throttle); 
+      Serial.println(throttle, 4); 
 #endif
-      // lastThrottle = throttle;
+      lastThrottle = throttle;
     }
     int delayMS = constrain(startMS + 20 - millis(), 5, 20);
     // Serial.print("sleeping "); Serial.println(delayMS);
