@@ -24,8 +24,8 @@
  */
 class Blinker {
   public:
-	Blinker(int LED);
-	void init(void);
+    Blinker();
+    void init(int LED);
     void start(int BPS);
     void update(int BPS);
     void run(void);
@@ -42,13 +42,14 @@ class Blinker {
 
 
 // constructor; requires the pin to blink
-Blinker::Blinker(int LED) {
-  _led = LED;
+Blinker::Blinker() {
+  _led = 0;
   _nextMillis = 0;
 } // Blinker::Blinker(int LED)
 
 
-void Blinker::init() {
+void Blinker::init(int LED) {
+  _led = LED;
   pinMode(_led, OUTPUT);
   stop();
 }

@@ -1,56 +1,41 @@
-/*
- * Wiiceiver hardware definitions
- * don't change these without changing the board 
- */
-#define GREEN_LED 7   // any digital pin; DIP13
-#define RED_LED 8     // any digital pin; DIP14
-
-#define ESC_PPM 10    // PWM required; DIP16
-#define ESC_GROUND 00 // hard-wired
-
-#define WII_SCL 19    // aka A5 -- DO NOT USE  (Wire needs it)
-#define WII_SDA 18    // aka A4 -- DO NOT USE  (Wire needs it)
-#define WII_POWER 9   // any digital pin; DIP15
-#define WII_GROUND 00 // hard-wired
-
-
-
-
 #include <Wire.h>
 #include <Servo.h>
 #include <EEPROM.h>
 
 
-// #define DEBUGGING
+#define DEBUGGING
 
 #include "Blinker.h"
 
-// #define DEBUGGING_SMOOTHER
-#include "Smoother.h"
 
 // #define DEBUGGING_CHUCK
 // #define DEBUGGING_CHUCK_ACTIVITY
 #define WII_ACTIVITY_COUNTER 100  // once per 20ms; 50 per second
 #include "Chuck.h"
 
-// #define DEBUGGING_ESC
+#define DEBUGGING_ESC
 #include "ElectronicSpeedController.h"
 
+// #define DEBUGGING_SMOOTHER
+#include "Smoother.h"
+
 // #define DEBUGGING_THROTTLE
-#define MIN_THROTTLE 0.05        // the lowest throttle to send the ESC
+#define THROTTLE_MIN 0.05        // the lowest throttle to send the ESC
 #define THROTTLE_CC_BUMP 0.002   // CC = 0.1% throttle increase; 50/s = 10s to hit 100% on cruise
-#define THROTTLE_SMOOTHNESS 0.2  // default "smoothing" factor
+#define THROTTLE_SMOOTHNESS 0.05  // default "smoothing" factor
+#define THROTTLE_MIN_CC 0.45     // minimum / inital speed for cruise crontrol
 #include "Throttle.h"
 
 
-
+#include "pinouts.h"
 
 
 Chuck chuck;
 ElectronicSpeedController ESC;
-Blinker green = Blinker(GREEN_LED);
-Blinker red = Blinker(RED_LED);
+Blinker green, red;
 Throttle throttle;
+
+
 
 
 // maybe calibrate the joystick:
@@ -91,22 +76,22 @@ void maybeCalibrate(void) {
 // an unambiguous startup display
 void splashScreen() {
   int i;
-  digitalWrite(GREEN_LED, HIGH);
-  digitalWrite(RED_LED, HIGH);
+  digitalWrite(pinLocation(GREEN_LED_ID), HIGH);
+  digitalWrite(pinLocation(RED_LED_ID), HIGH);
   delay(500);
   for (i = 0; i < 10; i++) {
-    digitalWrite(GREEN_LED, HIGH);
-    digitalWrite(RED_LED, LOW);
+    digitalWrite(pinLocation(GREEN_LED_ID), HIGH);
+    digitalWrite(pinLocation(RED_LED_ID), LOW);
     delay(50);
-    digitalWrite(GREEN_LED, LOW);
-    digitalWrite(RED_LED, HIGH);
+    digitalWrite(pinLocation(GREEN_LED_ID), LOW);
+    digitalWrite(pinLocation(RED_LED_ID), HIGH);
     delay(50);
   }
-  digitalWrite(GREEN_LED, HIGH);
-  digitalWrite(RED_LED, HIGH);
+  digitalWrite(pinLocation(GREEN_LED_ID), HIGH);
+  digitalWrite(pinLocation(RED_LED_ID), HIGH);
   delay(500);
-  digitalWrite(GREEN_LED, LOW);    
-  digitalWrite(RED_LED, LOW);  
+  digitalWrite(pinLocation(GREEN_LED_ID), LOW);    
+  digitalWrite(pinLocation(RED_LED_ID), LOW);  
 } // void splashScreen(void)
 
 
@@ -176,12 +161,12 @@ void setup_pins() {
   pinMode(WII_GROUND, OUTPUT);
   digitalWrite(WII_GROUND, LOW);
   */
-  pinMode(WII_POWER, OUTPUT);
-  digitalWrite(WII_POWER, HIGH);
+  pinMode(pinLocation(WII_POWER_ID), OUTPUT);
+  digitalWrite(pinLocation(WII_POWER_ID), HIGH);
 } // setup_pins()
 
 
-
+/*
 // dead code
 void stopChuck() {
 #ifdef DEBUGGING
@@ -195,6 +180,7 @@ void stopChuck() {
 digitalWrite(WII_POWER, HIGH);
   delay(5000);
 } // stopChuck()
+*/
 
 
 // returns true if the chuck appears "active"
@@ -263,11 +249,11 @@ void setup() {
   Serial.println(") starting");
 #endif
 
-  green.init();
-  red.init();
+  green.init(pinLocation(GREEN_LED_ID));
+  red.init(pinLocation(RED_LED_ID));
 
   setup_pins();
-  ESC.init(ESC_PPM);
+  ESC.init(pinLocation(ESC_PPM_ID));
   
   splashScreen();
 

@@ -30,10 +30,10 @@ class Throttle {
      *
      *   if C is pressed, "cruise control":
      *      set "cruise" to last joystick position
-     *      if joystick == up, increment throttle position
-     *      if joystick == down, decrement throttle position
+     *      if joystick == up, increment throttle position (Z button: 3x increment)
+     *      if joystick == down, decrement throttle position  (Z button: 3x decrement)
      *   else throttle position == chuck.Y joystick position
-     *   return a smoothed value from the throttle position
+     *   return a smoothed value from the throttle position (Z button: 4x less smoothed)
      */
     float update(Chuck chuck) {
 #ifdef DEBUGGING_THROTTLE
@@ -52,23 +52,25 @@ class Throttle {
         Serial.print(throttle, 4);
         Serial.print(", ");
 #endif
-        // throttle = lastThrottle;
-        if (chuck.Y > 0.5 && throttle < 1.0) {
-          throttle += THROTTLE_CC_BUMP;
-        } else if (chuck.Y < -0.5 && throttle > -1.0) {
-          throttle -= THROTTLE_CC_BUMP;
-        } 
-      
+        if (throttle < THROTTLE_MIN_CC) {
+          throttle += THROTTLE_CC_BUMP * 1.5;
+        } else {
+          if (chuck.Y > 0.5 && throttle < 1.0) {
+            throttle += THROTTLE_CC_BUMP * (chuck.Z ? 2 : 1);
+          } else if (chuck.Y < -0.5 && throttle > -1.0) {
+            throttle -= THROTTLE_CC_BUMP * (chuck.Z ? 2 : 1);
+          } // if (chuck.Y > 0.5 && throttle < 1.0) - else
+        } // if (throttle < THROTTLE_MIN_CC) - else
       } else {
         throttle = chuck.Y;
 
         // "center" the joystick by enforcing some very small minimum
-        if (abs(throttle) < MIN_THROTTLE) {
+        if (abs(throttle) < THROTTLE_MIN) {
           throttle = 0;
         }
       } // if (chuck.C) -- else
 
-      smoothed = smoother.compute(throttle, chuck.Z ? THROTTLE_SMOOTHNESS : THROTTLE_SMOOTHNESS / 4);
+      smoothed = smoother.compute(throttle, THROTTLE_SMOOTHNESS * (chuck.Z ? 4 : 1));
 
 #ifdef DEBUGGING_THROTTLE
       Serial.print(F("position: "));
