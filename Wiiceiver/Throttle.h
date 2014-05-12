@@ -10,17 +10,57 @@
  */
 
 class Throttle {
+#define EEPROM_AUTOCRUISE_ADDY 1
   private:
-    float throttle, smoothed;
+    float autoCruise, throttle, smoothed;
+    int xCounter;
     Smoother smoother;
+    
+    
+    void readAutoCruise(void) {
+      byte storedValue = EEPROM.read(EEPROM_AUTOCRUISE_ADDY);
+#ifdef DEBUGGING_THROTTLE
+      Serial.print("Read autoCruise from EEPROM: ");
+      Serial.print(storedValue);
+#endif
+      if (storedValue > 0 && storedValue < 100) {
+        autoCruise = 0.01 * storedValue;
+#ifdef DEBUGGING_THROTTLE
+        Serial.print("; setting autoCruise = ");
+        Serial.println(autoCruise);
+#endif  
+      } else {
+#ifdef DEBUGGING_THROTTLE
+        Serial.print("; ignoring, setting autoCruise = ");
+        Serial.println(autoCruise);
+#endif        
+      }
+    } // readAutoCruise(void) 
+    
+    
+    void writeAutoCruise(void) {
+      int storedValue = autoCruise * 100;
+      EEPROM.write(EEPROM_AUTOCRUISE_ADDY, storedValue);
+#ifdef DEBUGGING_THROTTLE
+      Serial.print("Storing autoCruise as ");
+      Serial.println(storedValue);
+#endif         
+    }
+    
     
   public:    
     
     Throttle() {
       smoother = Smoother();
       throttle = 0;
+      autoCruise = THROTTLE_MIN_CC;
+      xCounter = 0;
     } // Throttle()
     
+
+    void init(void) {
+      readAutoCruise();
+    }
     
     /*
      * returns a smoothed float [-1 .. 1]
@@ -46,13 +86,19 @@ class Throttle {
       Serial.print("; ");
 #endif
 
+      if (checkAutoCruise(chuck)) {
+        return throttle;  // we're looking for autoCruise, so do that -- don't change the throttle
+      }
+      
       if (chuck.C) { // cruise control!
+/*
 #ifdef DEBUGGING_THROTTLE
         Serial.print("CC: last = ");
         Serial.print(throttle, 4);
         Serial.print(", ");
 #endif
-        if (throttle < THROTTLE_MIN_CC) {
+        
+        if (throttle < autoCruise) {
           throttle += THROTTLE_CC_BUMP * 1.5;
         } else {
           if (chuck.Y > 0.5 && throttle < 1.0) {
@@ -61,9 +107,21 @@ class Throttle {
             throttle -= THROTTLE_CC_BUMP * (chuck.Z ? 2 : 1);
           } // if (chuck.Y > 0.5 && throttle < 1.0) - else
         } // if (throttle < THROTTLE_MIN_CC) - else
-      } else {
-        throttle = chuck.Y;
+*/
+       if (chuck.Y > 0.5 && throttle < 1.0) {
+         throttle += THROTTLE_CC_BUMP * (chuck.Z ? 2 : 1);
+       } else {
+         if (chuck.Y < -0.5 && throttle > -1.0) {
+           throttle -= THROTTLE_CC_BUMP * (chuck.Z ? 2 : 1);
+         } else {
+           if (throttle < autoCruise) {
+             throttle += THROTTLE_CC_BUMP * 1.5;
+           }
+         }
+       } // if (chuck.Y > 0.5 && throttle < 1.0) - else
 
+      } else { // if (checkAutoCruise() && chuck.C)
+        throttle = chuck.Y;
         // "center" the joystick by enforcing some very small minimum
         if (abs(throttle) < THROTTLE_MIN) {
           throttle = 0;
@@ -81,6 +139,56 @@ class Throttle {
 
       return smoothed;
     } // float update(void)
+    
+    
+    /*
+     * returns 'true' if we're in a "set autocruise level" state:
+     *   while in cruise (chuck.C), with no throttle input (chuck.Y =~ 0), 
+     *   nonzero throttle, full X deflection (chuck.X > 0.75) ... for N cycles
+     * set "autoCruise" to the current throttle level.
+     *   
+     */
+    bool checkAutoCruise(Chuck chuck) {
+      if (! chuck.C) {
+#ifdef DEBUGGING_THROTTLE
+        Serial.println("checkAutoCruise: no C");
+#endif
+        xCounter = 0;
+        return false;
+      }
+      if (abs(chuck.Y) < 0.5 && 
+          abs(chuck.X) > 0.75) {
+        ++xCounter;
+#ifdef DEBUGGING_THROTTLE
+        Serial.print("checkAutoCruise: xCounter = ");
+        Serial.println(xCounter);
+#endif
+        if (xCounter == 150) { // ~3s holding X
+          setAutoCruise();  
+        }
+        return true;
+      } else {
+        xCounter = 0;
+#ifdef DEBUGGING_THROTTLE
+        Serial.println("checkAutoCruise: no X or Y");
+        Serial.print("x = ");
+        Serial.print(abs(chuck.X));
+        Serial.print(", y = ");
+        Serial.println(abs(chuck.Y));
+#endif        
+        return false;
+      }
+    } // bool checkAutoCruise(void)
+    
+    
+    void setAutoCruise(void) {
+#ifdef DEBUGGING_THROTTLE
+      Serial.print("Setting autoCruise = ");
+      Serial.println(throttle);
+#endif
+      autoCruise = throttle;
+      writeAutoCruise();
+    } // setAutoCruise(void)
     
     
     float getThrottle(void) {

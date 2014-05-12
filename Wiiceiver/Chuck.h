@@ -34,10 +34,12 @@ class Chuck {
 #define WII_ACTIVITY_COUNTER 250  // consecutive static reads & it's considered inactive
 #endif
 #define DEFAULT_Y_ZERO 128
+#define DEFAULT_X_ZERO 128
+#define EEPROM_Y_ADDY 0
 
 private:
   byte status[6];
-  byte Y0, Ymin, Ymax;
+  byte Y0, Ymin, Ymax, X0, Xmin, Xmax;
   word lastActivity, activitySamenessCount;
 public:
   float X, Y;
@@ -88,6 +90,10 @@ private:
   
   // tracks the max-observed deflection (high & low)
   void _selfCalibrateDeflection(void) {
+    byte joyX = status[0];
+    Xmin = min(joyX, Xmin);
+    Xmax = max(joyX, Xmax);
+ 
     byte joyY = status[1];
 
     if (joyY < Ymin) {
@@ -101,8 +107,21 @@ private:
 
 
   void _computeStatus(void) {
+    byte joyX = status[0];
     byte joyY = status[1];
     _selfCalibrateDeflection();
+    
+    int centeredX = joyX - X0;
+    if (centeredX == 0) {
+      X = 0;
+    } 
+    else if (centeredX > 0) {
+      X = 1.0 * centeredX / (Xmax - X0);
+    } 
+    else {
+      X = -1.0 * centeredX / (Xmin - X0); 
+    }
+    
     int centeredY = joyY - Y0;
     if (centeredY == 0) {
       Y = 0;
@@ -185,9 +204,9 @@ public:
 
 
   void setup(void) {
-    Y0 = 128;
-    Ymin = 15;
-    Ymax = 200;
+    X0 = Y0 = 128;
+    Xmin = Ymin = 15;
+    Xmax = Ymax = 200;
 
     Wire.begin();
     Wire.beginTransmission(0x52);       // device address

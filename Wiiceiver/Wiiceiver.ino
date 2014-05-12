@@ -8,7 +8,7 @@
 #include "Blinker.h"
 
 
-// #define DEBUGGING_CHUCK
+#define DEBUGGING_CHUCK
 // #define DEBUGGING_CHUCK_ACTIVITY
 #define WII_ACTIVITY_COUNTER 100  // once per 20ms; 50 per second
 #include "Chuck.h"
@@ -19,11 +19,12 @@
 // #define DEBUGGING_SMOOTHER
 #include "Smoother.h"
 
-// #define DEBUGGING_THROTTLE
-#define THROTTLE_MIN 0.05        // the lowest throttle to send the ESC
-#define THROTTLE_CC_BUMP 0.002   // CC = 0.1% throttle increase; 50/s = 10s to hit 100% on cruise
+#define DEBUGGING_THROTTLE
+#define THROTTLE_MIN 0.05         // the lowest throttle to send the ESC
+#define THROTTLE_CC_BUMP 0.002    // CC = 0.1% throttle increase; 50/s = 10s to hit 100% on cruise
 #define THROTTLE_SMOOTHNESS 0.05  // default "smoothing" factor
-#define THROTTLE_MIN_CC 0.45     // minimum / inital speed for cruise crontrol
+#define THROTTLE_MIN_CC 0.10      // minimum / inital speed for cruise crontrol
+                                  // note that a different value may be stored in EEPROM
 #include "Throttle.h"
 
 
@@ -272,6 +273,8 @@ void setup() {
 #ifdef DEBUGGING
   Serial.println("Nunchuck is active!");
 #endif
+
+  throttle.init();
 
   green.start(10);
   red.start(10);
