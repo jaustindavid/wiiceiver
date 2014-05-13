@@ -38,7 +38,7 @@ class Chuck {
 #define EEPROM_Y_ADDY 0
 
 private:
-  byte status[6];
+  byte status[6], lastStatus[6];
   byte Y0, Ymin, Ymax, X0, Xmin, Xmax;
   word lastActivity, activitySamenessCount;
 public:
@@ -48,44 +48,22 @@ public:
 
 private:
 
-  /*
-   * maintain the bits of the accelerometer axes & both buttons
-   * as a proxy for "the controller is still moving"
-   * awesomely, these are held in the last status byte
-   * ... but memorex only uses an 8-bit accelerometer, so we 
-   * add more bits from the other axes
-   */
-  word getActivity() {
-    word activity;
-    activity = status[0] & B01;
-#ifdef DEBUGGING_CHUCK_ACTIVITY
-    Serial.print("get activity: ");
-    Serial.print(activity, BIN);
-#endif
-
-    activity <<= 1;
-    activity += status[1] & B01;
-#ifdef DEBUGGING_CHUCK_ACTIVITY
-    Serial.print(" ");
-    Serial.print(activity, BIN);
-#endif
-
-    for (int i = 2; i < 5; i++) {
-      activity <<= 2;
-      activity += status[i] & B011;
-#ifdef DEBUGGING_CHUCK_ACTIVITY
-    Serial.print(" ");
-    Serial.print(activity, BIN);
-#endif    
-
+  bool statusChanged(void) {
+    for (int i=0; i < 6; i++) {
+      if (status[i] != lastStatus[i]) {
+        return true;
+      }
     }
-    activity = word(activity, status[5]);
-#ifdef DEBUGGING_CHUCK_ACTIVITY
-    Serial.print(" : ");
-    Serial.println(activity, BIN);
-#endif
-    return activity;
-  } // word getActivityWord()
+    
+    return false;
+  } // bool statusChanged()
+  
+  
+  void saveLastStatus(void) {
+    for (int i=0; i < 6; i++) {
+      lastStatus[i] = status[i];
+    }
+  } // void saveLastStatus()
 
   
   // tracks the max-observed deflection (high & low)
@@ -137,23 +115,24 @@ private:
     Z = (status[5] & B00000001) == 0;
 
 
-    word activity = getActivity();
-    if (activity == lastActivity) { 
+    if (!statusChanged()) { 
       if (activitySamenessCount < WII_ACTIVITY_COUNTER) {
         activitySamenessCount ++;
       }
     } else {
       activitySamenessCount = 0;
-      lastActivity = activity;
+      saveLastStatus();
     }
     
 #ifdef DEBUGGING_CHUCK_ACTIVITY
     Serial.print("CHUCK: ");
     for (int i = 0; i < 5; i++) {
+      Serial.print(" [");
       Serial.print(status[i], DEC);
-      Serial.print(" ");
+      Serial.print("<>");
+      Serial.print(lastStatus[i], DEC);
+      Serial.print("]");
     }
-    Serial.print(status[5], BIN);
     Serial.print("; sameness ");
     Serial.print(activitySamenessCount);    
     Serial.println();
@@ -228,8 +207,8 @@ public:
   } // void setup(void)
 
 
+  // update the status[] fields from the nunchuck
   void update(void) {
-
     // TODO: estimate the actual delay required between the request 
     // & data available on bus
     // delay(1);
@@ -237,7 +216,7 @@ public:
     // read 6 bytes
     Wire.requestFrom (0x52, 6); // request data from nunchuck
     int cnt = 0;
-    while (Wire.available ()) {
+    while (Wire.available()) {
       status[cnt] = Wire.read();
       cnt++;
     }
@@ -257,7 +236,7 @@ public:
 
 
   // is the controller "active" -- being held by a human & reporting
-  // changing accelerometer values?
+  // changing values?
   bool isActive(void) {
     return activitySamenessCount < WII_ACTIVITY_COUNTER;
   } // bool isActive(void)
