@@ -1,7 +1,35 @@
+/*
+ * (CC BY-NC-SA 4.0) 
+ * http://creativecommons.org/licenses/by-nc-sa/4.0/
+ *
+ * WARNING WARNING WARNING: attaching motors to a skateboard is 
+ * a terribly dangerous thing to do.  This software is totally
+ * for amusement and/or educational purposes.  Don't obtain or
+ * make a wiiceiver (see below for instructions and parts), 
+ * don't attach it to a skateboard, and CERTAINLY don't use it
+ * to zip around with just a tiny, ergonomic nunchuck instead
+ * of a bulky R/C controller.
+ *
+ * This software is made freely available.  If you wish to 
+ * sell it, don't.  If you wish to modify it, DO! (and please
+ * let me know).  Much of the code is derived from others out
+ * there, I've made attributuions where appropriate.
+ *
+ * http://austindavid.com/wiiceiver
+ *  
+ * latest software: https://github.com/jaustindavid/wiiceiver
+ * schematic & parts: http://www.digikey.com/schemeit#t9g
+ *
+ * Enjoy!  Be safe! 
+ * 
+ * (CC BY-NC-SA 4.0) Austin David, austin@austindavid.com
+ * 12 May 2014
+ *
+ */
+
 #include <Wire.h>
 #include <Servo.h>
 #include <EEPROM.h>
-
 
 #define DEBUGGING
 
@@ -23,7 +51,7 @@
 #define THROTTLE_MIN 0.05         // the lowest throttle to send the ESC
 #define THROTTLE_CC_BUMP 0.002    // CC = 0.1% throttle increase; 50/s = 10s to hit 100% on cruise
 #define THROTTLE_SMOOTHNESS 0.05  // default "smoothing" factor
-#define THROTTLE_MIN_CC 0.10      // minimum / inital speed for cruise crontrol
+#define THROTTLE_MIN_CC 0.05      // minimum / inital speed for cruise crontrol
                                   // note that a different value may be stored in EEPROM
 #include "Throttle.h"
 

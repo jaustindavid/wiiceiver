@@ -1,4 +1,33 @@
 /*
+ * (CC BY-NC-SA 4.0) 
+ * http://creativecommons.org/licenses/by-nc-sa/4.0/
+ *
+ * WARNING WARNING WARNING: attaching motors to a skateboard is 
+ * a terribly dangerous thing to do.  This software is totally
+ * for amusement and/or educational purposes.  Don't obtain or
+ * make a wiiceiver (see below for instructions and parts), 
+ * don't attach it to a skateboard, and CERTAINLY don't use it
+ * to zip around with just a tiny, ergonomic nunchuck instead
+ * of a bulky R/C controller.
+ *
+ * This software is made freely available.  If you wish to 
+ * sell it, don't.  If you wish to modify it, DO! (and please
+ * let me know).  Much of the code is derived from others out
+ * there, I've made attributuions where appropriate.
+ *
+ * http://austindavid.com/wiiceiver
+ *  
+ * latest software: https://github.com/jaustindavid/wiiceiver
+ * schematic & parts: http://www.digikey.com/schemeit#t9g
+ *
+ * Enjoy!  Be safe! 
+ * 
+ * (CC BY-NC-SA 4.0) Austin David, austin@austindavid.com
+ * 12 May 2014
+ *
+ */
+ 
+/*
  * version detection -- pin layouts change over time ...
  * historical note: CSEL = "chip select"
  *
@@ -49,7 +78,7 @@ void chipSelect (void) {
 /*
  * locations are specified in the following table:
  * rows == component
- * columns = version; first column = v1, second = v2, etc
+ * columns = version; first column = v0, second = v1, etc
  */
 int pinLocation(int pinID) {
   int pinMap[6][2] = {
@@ -59,7 +88,7 @@ int pinLocation(int pinID) {
     {10,  9}, // ESC_PPM     PWM required
     {9,  11}, // WII_POWER   any digital pin
     {19, 19}, // WII_SCL     A5, don't change
-    {18, 18}, // WII_SDA     A4, don't cange
+    {18, 18}, // WII_SDA     A4, don't change
   };
   
   if (CSEL < 0) {

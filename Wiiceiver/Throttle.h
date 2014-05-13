@@ -1,3 +1,32 @@
+/*
+ * (CC BY-NC-SA 4.0) 
+ * http://creativecommons.org/licenses/by-nc-sa/4.0/
+ *
+ * WARNING WARNING WARNING: attaching motors to a skateboard is 
+ * a terribly dangerous thing to do.  This software is totally
+ * for amusement and/or educational purposes.  Don't obtain or
+ * make a wiiceiver (see below for instructions and parts), 
+ * don't attach it to a skateboard, and CERTAINLY don't use it
+ * to zip around with just a tiny, ergonomic nunchuck instead
+ * of a bulky R/C controller.
+ *
+ * This software is made freely available.  If you wish to 
+ * sell it, don't.  If you wish to modify it, DO! (and please
+ * let me know).  Much of the code is derived from others out
+ * there, I've made attributuions where appropriate.
+ *
+ * http://austindavid.com/wiiceiver
+ *  
+ * latest software: https://github.com/jaustindavid/wiiceiver
+ * schematic & parts: http://www.digikey.com/schemeit#t9g
+ *
+ * Enjoy!  Be safe! 
+ * 
+ * (CC BY-NC-SA 4.0) Austin David, austin@austindavid.com
+ * 12 May 2014
+ *
+ */
+
 #ifndef THROTTLE_H
 #define THROTTLE_H
 
@@ -87,31 +116,16 @@ class Throttle {
 #endif
 
       if (checkAutoCruise(chuck)) {
-        return throttle;  // we're looking for autoCruise, so do that -- don't change the throttle
+        return throttle;  // we're looking for autoCruise, so do that;
+                          // don't change the throttle position
       }
       
       if (chuck.C) { // cruise control!
-/*
-#ifdef DEBUGGING_THROTTLE
-        Serial.print("CC: last = ");
-        Serial.print(throttle, 4);
-        Serial.print(", ");
-#endif
-        
-        if (throttle < autoCruise) {
-          throttle += THROTTLE_CC_BUMP * 1.5;
-        } else {
-          if (chuck.Y > 0.5 && throttle < 1.0) {
-            throttle += THROTTLE_CC_BUMP * (chuck.Z ? 2 : 1);
-          } else if (chuck.Y < -0.5 && throttle > -1.0) {
-            throttle -= THROTTLE_CC_BUMP * (chuck.Z ? 2 : 1);
-          } // if (chuck.Y > 0.5 && throttle < 1.0) - else
-        } // if (throttle < THROTTLE_MIN_CC) - else
-*/
+
        if (chuck.Y > 0.5 && throttle < 1.0) {
          throttle += THROTTLE_CC_BUMP * (chuck.Z ? 2 : 1);
        } else {
-         if (chuck.Y < -0.5 && throttle > -1.0) {
+         if (chuck.Y < -0.5 && throttle > 0) {
            throttle -= THROTTLE_CC_BUMP * (chuck.Z ? 2 : 1);
          } else {
            if (throttle < autoCruise) {
