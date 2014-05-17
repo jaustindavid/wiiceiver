@@ -93,6 +93,7 @@ void setLevel(float level) {
 #endif
     angle = newAngle;
     _esc.write(angle);
+    lastWrite = millis();
   }
 } // void setLevel(float level)
 
