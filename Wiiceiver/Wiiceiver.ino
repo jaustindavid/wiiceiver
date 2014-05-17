@@ -48,16 +48,15 @@
 #include "Smoother.h"
 
 #define DEBUGGING_THROTTLE
-#define THROTTLE_MIN 0.05         // the lowest throttle to send the ESC
-#define THROTTLE_CC_BUMP 0.002    // CC = 0.1% throttle increase; 50/s = 10s to hit 100% on cruise
-#define THROTTLE_SMOOTHNESS 0.05  // default "smoothing" factor
-#define THROTTLE_MIN_CC 0.05      // minimum / inital speed for cruise crontrol
-                                  // note that a different value may be stored in EEPROM
+#define THROTTLE_MIN 0.05                 // the lowest throttle to send the ESC
+#define THROTTLE_CC_BUMP 0.002            // CC = 0.2% throttle increase; 50/s = 10s to hit 100% on cruise
+#define THROTTLE_SMOOTHNESS 0.05          // default "smoothing" factor
+#define THROTTLE_MIN_CC 0.05              // minimum / inital speed for cruise crontrol
+                                          // note that a different value may be stored in EEPROM
+#define THROTTLE_CRUISE_RETURN_MS 5000    // time (ms) when re-grabbing cruise will use the previous CC level
 #include "Throttle.h"
 
-
 #include "pinouts.h"
-
 
 Chuck chuck;
 ElectronicSpeedController ESC;
@@ -344,8 +343,11 @@ void loop() {
 #endif
       lastThrottleValue = throttleValue;
     }
-    int delayMS = constrain(startMS + 20 - millis(), 5, 20);
-    // Serial.print("sleeping "); Serial.println(delayMS);
+    int delayMS = constrain(startMS + 21 - millis(), 5, 20);
+#ifdef DEBUGGING
+    Serial.print("sleeping "); 
+    Serial.println(delayMS);
+#endif
     delay(delayMS);
   } // if (chuck.isActive())
 }
