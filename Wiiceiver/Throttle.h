@@ -253,7 +253,7 @@ class Throttle {
       } // if (chuck.C) -- else
 
       // don't smooth brakes
-      if (throttle <= 0) {
+      if (throttle <= 0 && smoothed <= 0) {
         smoothed = smoother.compute(throttle, 1.0);
       } else {
         // holding Z == more aggressive smoothing (e.g., more responsive)
