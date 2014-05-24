@@ -36,27 +36,33 @@
 #include "Blinker.h"
 
 
-#define DEBUGGING_CHUCK
-#define DEBUGGING_CHUCK_ACTIVITY
+// #define DEBUGGING_CHUCK
+// #define DEBUGGING_CHUCK_ACTIVITY
 #define WII_ACTIVITY_COUNTER 100  // once per 20ms; 50 per second
 #include "Chuck.h"
+
 
 // #define DEBUGGING_ESC
 #include "ElectronicSpeedController.h"
 
+
 // #define DEBUGGING_SMOOTHER
+#define SMOOTHER_MIN_STEP 0.003           // minimum change for smoothing; 0.003 for ~1s, 0.001 for ~2s
 #include "Smoother.h"
+
 
 // #define DEBUGGING_THROTTLE
 #define THROTTLE_MIN 0.05                 // the lowest throttle to send the ESC
 #define THROTTLE_CC_BUMP 0.002            // CC = 0.2% throttle increase; 50/s = 10s to hit 100% on cruise
-#define THROTTLE_SMOOTHNESS 0.05          // default "smoothing" factor
+#define THROTTLE_SMOOTHNESS 0.05          // default "smoothing" factor; 0.05 =~ 1s, 0.02 =~ 2s
 #define THROTTLE_MIN_CC 0.05              // minimum / inital speed for cruise crontrol
                                           // note that a different value may be stored in EEPROM
 #define THROTTLE_CRUISE_RETURN_MS 5000    // time (ms) when re-grabbing cruise will use the previous CC level
 #include "Throttle.h"
 
+
 #include "pinouts.h"
+
 
 Chuck chuck;
 ElectronicSpeedController ESC;
@@ -379,7 +385,7 @@ void loop() {
       lastThrottleValue = throttleValue;
     }
     int delayMS = constrain(startMS + 21 - millis(), 5, 20);
-#ifdef DEBUGGING
+#ifdef DEBUGGING_INTERVALS
     Serial.print("sleeping "); 
     Serial.println(delayMS);
 #endif

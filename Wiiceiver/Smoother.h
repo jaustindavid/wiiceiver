@@ -45,7 +45,6 @@ class Smoother {
     }
     
 
-#define MIN_STEP 0.003
 
     float compute(float target, float factor) {
       float step = (target - value) * factor;
@@ -61,7 +60,7 @@ class Smoother {
       Serial.print(step, 4);
 #endif
 
-      if (abs(step) < MIN_STEP) {
+      if (abs(step) < SMOOTHER_MIN_STEP) {
 #ifdef DEBUGGING_SMOOTHER
       Serial.print(" BUMP");
 #endif
