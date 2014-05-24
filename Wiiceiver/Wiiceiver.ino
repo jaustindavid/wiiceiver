@@ -37,17 +37,17 @@
 
 
 #define DEBUGGING_CHUCK
-// #define DEBUGGING_CHUCK_ACTIVITY
+#define DEBUGGING_CHUCK_ACTIVITY
 #define WII_ACTIVITY_COUNTER 100  // once per 20ms; 50 per second
 #include "Chuck.h"
 
-#define DEBUGGING_ESC
+// #define DEBUGGING_ESC
 #include "ElectronicSpeedController.h"
 
 // #define DEBUGGING_SMOOTHER
 #include "Smoother.h"
 
-#define DEBUGGING_THROTTLE
+// #define DEBUGGING_THROTTLE
 #define THROTTLE_MIN 0.05                 // the lowest throttle to send the ESC
 #define THROTTLE_CC_BUMP 0.002            // CC = 0.2% throttle increase; 50/s = 10s to hit 100% on cruise
 #define THROTTLE_SMOOTHNESS 0.05          // default "smoothing" factor
@@ -67,13 +67,19 @@ Throttle throttle;
 
 
 // maybe calibrate the joystick:
-//   read the C button 50 times, once per 100ms (5s total); if it's constantly
+//   read the C button 250 times, once per 20ms (5s total); if it's constantly
 //   down, calibrate the joystick
 void maybeCalibrate(void) {
   int ctr = 0;
   int i = 0;
 
   chuck.update();
+  if (chuck.C != 1 || ! chuck.isActive()) {
+    return;
+  }
+
+  red.update(10);
+  green.update(10);
   while (i < 250 && chuck.C) {
     chuck.update();
     red.run();
@@ -98,7 +104,7 @@ void maybeCalibrate(void) {
 
   red.update(1);
   green.update(1);
-}
+} // void maybeCalibrate() 
 
 
 // an unambiguous startup display
@@ -194,35 +200,58 @@ void setup_pins() {
 } // setup_pins()
 
 
-/*
-// dead code
+// wait up to 1s for something to happen
+bool waitForActivity(void) {
+  unsigned long timer = millis() + 1000;
+#ifdef DEBUGGING
+    Serial.print(millis());
+    Serial.print(" Waiting for activity ... ");
+#endif
+  
+  chuck.update();
+  while (! chuck.isActive() && timer > millis()) {
+    delay(20);
+    chuck.update();
+  }
+#ifdef DEBUGGING
+    Serial.print(millis());
+    Serial.println(chuck.isActive() ? ": active!" : ": not active :(");
+#endif
+  
+  return chuck.isActive();
+}
+
+
+// dead code?
 void stopChuck() {
 #ifdef DEBUGGING
     Serial.println("Nunchuck: power off");
 #endif
-  digitalWrite(WII_POWER, LOW);
+  digitalWrite(pinLocation(WII_POWER_ID), LOW);
   delay(250);
 #ifdef DEBUGGING
     Serial.println("Nunchuck: power on");
 #endif
-digitalWrite(WII_POWER, HIGH);
-  delay(5000);
+  digitalWrite(pinLocation(WII_POWER_ID), HIGH);
+  delay(250);
 } // stopChuck()
-*/
+
 
 
 // returns true if the chuck appears "active"
+// will retry 5 times, waiting 1s each
 bool startChuck() {
   int tries = 0;
   
-  while (tries < 5) {
+  while (tries < 10) {
 #ifdef DEBUGGING
-    Serial.println("(Re)starting the nunchuck");
+    Serial.print("(Re)starting the nunchuck: ");
+    Serial.println(tries);
 #endif
     chuck.setup();
     chuck.readEEPROM();
     tries ++;
-    if (chuck.isActive()) {
+    if (waitForActivity()) {
       return true;
     }
   }
@@ -240,11 +269,13 @@ void handleInactivity() {
   // smoother.zero();  // kills throttle history
   throttle.zero();
   ESC.setLevel(0);
+  
+  // this loop: stop the chuck, try to restart 5 times in 5s; repeat until active
   do {    
     freakOut();
     if (! chuck.isActive()) {
-      // stopChuck();
-      // delay(250);
+      stopChuck();
+      delay(250);
       startChuck();
     }
   } while (! chuck.isActive());

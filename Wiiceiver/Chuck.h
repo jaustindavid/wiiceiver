@@ -77,6 +77,16 @@ public:
 
 private:
 
+  bool all255s(void) {
+    for (int i=0; i < 6; i++) {
+      if (status[i] != 255) {
+        return false;
+      }
+    }
+    return true;
+  } // bool all255s(void)
+
+
   bool statusChanged(void) {
     for (int i=0; i < 6; i++) {
       if (status[i] != lastStatus[i]) {
@@ -158,8 +168,6 @@ private:
     for (int i = 0; i < 5; i++) {
       Serial.print(" [");
       Serial.print(status[i], DEC);
-      Serial.print("<>");
-      Serial.print(lastStatus[i], DEC);
       Serial.print("]");
     }
     Serial.print("; sameness ");
@@ -267,7 +275,7 @@ public:
   // is the controller "active" -- being held by a human & reporting
   // changing values?
   bool isActive(void) {
-    return activitySamenessCount < WII_ACTIVITY_COUNTER;
+    return activitySamenessCount < WII_ACTIVITY_COUNTER && ! all255s();
   } // bool isActive(void)
 
 };
