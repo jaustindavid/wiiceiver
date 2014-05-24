@@ -219,11 +219,16 @@ public:
   } // calibrateCenter()
 
 
+  // setup the nunchuck -- send the initialization sequence & start reading data
   void setup(void) {
     X0 = Y0 = 128;
     Xmin = Ymin = 15;
     Xmax = Ymax = 200;
 
+#ifdef DEBUGGING_CHUCK
+    Serial.print(millis());
+    Serial.print(": Chuck.setup() ...");
+#endif
     Wire.begin();
     Wire.beginTransmission(0x52);       // device address
     Wire.write(0xF0);
@@ -234,13 +239,21 @@ public:
     Wire.write(0xFB);
     Wire.write((uint8_t)0x00);
     Wire.endTransmission();
+#ifdef DEBUGGING_CHUCK
+    Serial.print(" transmitted @ ");
+    Serial.print(millis());
+#endif
 
     // do enough updates to prime the activity checker ...
     for (int i = 0; i < WII_ACTIVITY_COUNTER; i++) {
       update();
       delay(1);
     }
-    // calibrateCenter();
+    
+ #ifdef DEBUGGING_CHUCK
+    Serial.print("; setup complete @ ");
+    Serial.println(millis());
+#endif   
   } // void setup(void)
 
 

@@ -197,6 +197,10 @@ void setup_pins() {
   */
   pinMode(pinLocation(WII_POWER_ID), OUTPUT);
   digitalWrite(pinLocation(WII_POWER_ID), HIGH);
+  
+  pinMode(pinLocation(WII_SCL_ID), INPUT_PULLUP);
+  pinMode(pinLocation(WII_SDA_ID), INPUT_PULLUP);
+
 } // setup_pins()
 
 
@@ -245,7 +249,7 @@ bool startChuck() {
   
   while (tries < 10) {
 #ifdef DEBUGGING
-    Serial.print("(Re)starting the nunchuck: ");
+    Serial.print("(Re)starting the nunchuck: #");
     Serial.println(tries);
 #endif
     chuck.setup();
@@ -270,12 +274,12 @@ void handleInactivity() {
   throttle.zero();
   ESC.setLevel(0);
   
-  // this loop: stop the chuck, try to restart 5 times in 5s; repeat until active
+  // this loop: try to restart 5 times in 5s; repeat until active
   do {    
     freakOut();
     if (! chuck.isActive()) {
-      stopChuck();
-      delay(250);
+      // stopChuck();
+      // delay(250);
       startChuck();
     }
   } while (! chuck.isActive());
@@ -316,7 +320,7 @@ void setup() {
   
   splashScreen();
 
-  delay(5000); // hold for nunchuck powerup
+  // delay(5000); // hold for nunchuck powerup
 
 #ifdef DEBUGGING
   Serial.println("Starting the nunchuck ...");
