@@ -58,16 +58,9 @@ void init(int pin) {
 #ifdef DEBUGGING_ESC
   Serial.println("initializing ESC...");
 #endif
-/*
-  for (int i = 0; i < 1000; i+= 20) {
-    _esc.write(ESC_CENTER);
-    delay(20);
-  }
-
-  delay(100);
-  */
-  _esc.write(ESC_CENTER);
+  _esc.write(30);
   delay(1000);
+  _esc.write(ESC_CENTER);
 #ifdef DEBUGGING_ESC
   Serial.println("done");
 #endif
