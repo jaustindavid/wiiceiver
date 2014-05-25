@@ -36,7 +36,7 @@
 
 class ElectronicSpeedController {
 #define ESC_CENTER 90       // angle of the "center"; probably always 90
-#define ESC_MAX_ANGLE 135   // angle of "max" deflection
+#define ESC_MAX_ANGLE 180   // angle of "max" deflection
 
 private:
   Servo _esc;
@@ -47,23 +47,27 @@ public:
 
 void init(int pin) {
   angle = ESC_CENTER;
-  
+  lastWrite = 0;
 #ifdef DEBUGGING_ESC
   Serial.print("attaching to pin #");
   Serial.println(pin);
 #endif
 
-  _esc.attach(pin);
+  _esc.attach(pin, 1000, 2000);
   
-#ifdef DEBUGGING
+#ifdef DEBUGGING_ESC
   Serial.println("initializing ESC...");
 #endif
+/*
   for (int i = 0; i < 1000; i+= 20) {
     _esc.write(ESC_CENTER);
     delay(20);
   }
 
   delay(100);
+  */
+  _esc.write(ESC_CENTER);
+  delay(1000);
 #ifdef DEBUGGING_ESC
   Serial.println("done");
 #endif
@@ -88,7 +92,9 @@ void setLevel(float level) {
       newAngle != angle) {
 #ifdef DEBUGGING_ESC
     Serial.print(millis());
-    Serial.print(F(": ESC angle: "));
+    Serial.print(F(": ESC old: "));
+    Serial.print(_esc.readMicroseconds());
+    Serial.print(F("ms; new angle: "));
     Serial.println(newAngle);
 #endif
     angle = newAngle;

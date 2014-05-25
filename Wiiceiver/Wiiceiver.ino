@@ -42,7 +42,7 @@
 #include "Chuck.h"
 
 
-// #define DEBUGGING_ESC
+#define DEBUGGING_ESC
 #include "ElectronicSpeedController.h"
 
 
