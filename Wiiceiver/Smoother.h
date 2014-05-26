@@ -43,9 +43,9 @@ class Smoother {
     Smoother(void) {
       value = 0;
     }
-    
 
 
+    // compute a new smoothed value
     float compute(float target, float factor) {
       float step = (target - value) * factor;
       

@@ -68,7 +68,7 @@ void chipSelect (void) {
     CSEL = 1;
   }
   
-#ifdef DEBUGGING
+#ifdef DEBUGGING_PINS
     Serial.print("Smells like v");
     Serial.println(CSEL);
 #endif
@@ -96,7 +96,7 @@ int pinLocation(int pinID) {
   }
   
   int pin = pinMap[pinID][CSEL];
-#ifdef DEBUGGING
+#ifdef DEBUGGING_PINS
   Serial.print("pin location: [");
   Serial.print(pinID);
   Serial.print("][");

@@ -46,48 +46,50 @@ private:
 public:
 
 void init(int pin) {
-  angle = ESC_CENTER;
+  angle = -1;
   lastWrite = 0;
 #ifdef DEBUGGING_ESC
   Serial.print("attaching to pin #");
   Serial.println(pin);
 #endif
-
   _esc.attach(pin, 1000, 2000);
   
+  delay(21);  // give the "last written" protection room to work
 #ifdef DEBUGGING_ESC
-  Serial.println("initializing ESC...");
+  Serial.print("initializing ESC...");
 #endif
-  _esc.write(30);
+
+  // startup sequence: some small negative input for ~1s, then idle
+  setLevel(-0.30);
   delay(1000);
-  _esc.write(ESC_CENTER);
+  setLevel(0);
+  
 #ifdef DEBUGGING_ESC
   Serial.println("done");
 #endif
-}
+} // void init(int pin)
 
 
 /*
  * input: -1 .. 1
  * output: writes +/- ESC_MAX_ANGLE to _esc
  * does *not* write the same angle twice -- possible interference with the PWM :(
+ * Servo will continually pulse the last-written angle
  */
 void setLevel(float level) {
   int newAngle = (int)(ESC_CENTER + (ESC_MAX_ANGLE - ESC_CENTER) * level);
   if (lastWrite + 20 > millis()) {
 #ifdef DEBUGGING_ESC
-  Serial.println("Too recently written; skipping");
+    Serial.println("Too recently written; skipping");
 #endif
-
     return;
   } 
-  if (newAngle == ESC_CENTER || 
-      newAngle != angle) {
+  if (newAngle != angle) {
 #ifdef DEBUGGING_ESC
     Serial.print(millis());
     Serial.print(F(": ESC old: "));
     Serial.print(_esc.readMicroseconds());
-    Serial.print(F("ms; new angle: "));
+    Serial.print(F("us; new angle: "));
     Serial.println(newAngle);
 #endif
     angle = newAngle;
@@ -98,7 +100,7 @@ void setLevel(float level) {
 
 
 private:
-// unused code
+// unused code; held for future ESC debugging
 #define STEP_DELAY 20
   void _sweep(void) {
     setLevel(0);

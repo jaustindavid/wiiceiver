@@ -61,6 +61,7 @@
 #include "Throttle.h"
 
 
+// #define DEBUGGING_PINS
 #include "pinouts.h"
 
 
@@ -269,7 +270,7 @@ bool startChuck() {
 } // startChuck()
 
 
-
+// pretty much what it sounds like
 void handleInactivity() {
 #ifdef DEBUGGING
   Serial.print(millis());
@@ -304,8 +305,8 @@ void handleInactivity() {
   Serial.print(millis());
   Serial.println(": finished inactivity -- chuck is active");
 #endif  
-
 } // handleInactivity()
+
 
 
 void setup() {
@@ -365,7 +366,6 @@ void loop() {
     Serial.println("INACTIVE!!");
 #endif
     handleInactivity();
-    // delay(100);
   } else {
     float throttleValue = throttle.update(chuck);
     ESC.setLevel(throttleValue);
