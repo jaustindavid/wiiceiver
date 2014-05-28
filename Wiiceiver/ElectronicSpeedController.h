@@ -95,10 +95,15 @@ void setLevel(float level) {
     Serial.print(F(": ESC old: "));
     Serial.print(_esc.readMicroseconds());
     Serial.print(F("us; new angle: "));
-    Serial.println(newAngle);
+    Serial.print(newAngle);
 #endif
     angle = newAngle;
     _esc.write(angle);
+#ifdef DEBUGGING_ESC
+    Serial.print(F(": ESC now: "));
+    Serial.println(_esc.readMicroseconds());
+#endif
+    
     lastWrite = millis();
   }
 } // void setLevel(float level)
@@ -119,9 +124,9 @@ private:
   void syncESC(void) {
     setLevel(0);
     delay(STEP_DELAY);
-    sweep(0, 0.3, 0.05);
-    sweep(0.3, -0.3, 0.05);
-    sweep(-0.3, 0, 0.05);
+    sweep(0, 0.5, 0.1);
+    sweep(0.5, -0.5, 0.1);
+    sweep(-0.5, 0, 0.1);
     delay(1000);
   } // void syncESC(void)
   
