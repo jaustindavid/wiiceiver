@@ -59,9 +59,14 @@ void init(int pin) {
   Serial.print("initializing ESC...");
 #endif
 
+/*
   // startup sequence: some small negative input for ~1s, then idle
+  setLevel(0.30);
+  delay(40);   
   setLevel(-0.30);
   delay(1000);
+*/
+  syncESC();
   setLevel(0);
   
 #ifdef DEBUGGING_ESC
@@ -100,26 +105,26 @@ void setLevel(float level) {
 
 
 private:
-// unused code; held for future ESC debugging
+
 #define STEP_DELAY 20
-  void _sweep(void) {
+
+  void sweep(float startLevel, float endLevel, float step) {
+    for (float level = startLevel; level <= endLevel; level += step) {
+      setLevel(level);
+      delay(STEP_DELAY);
+    }
+  } // sweep(float startLevel, float endLevel, float step)
+  
+  
+  void syncESC(void) {
     setLevel(0);
     delay(STEP_DELAY);
-    for (float level = 0; level <= 1.0; level += 0.1) {
-      setLevel(level);
-      delay(STEP_DELAY);
-    }
-    for (float level = 1.0; level >= -1.0; level -= 0.1) {
-      setLevel(level);
-      delay(STEP_DELAY);
-    }
-    for (float level = -1.0; level <= 0; level += 0.1) {
-      setLevel(level);
-      delay(STEP_DELAY);
-    }
-    setLevel(0);
-    delay(STEP_DELAY);
-  } // void _sweep(void)
+    sweep(0, 0.3, 0.05);
+    sweep(0.3, -0.3, 0.05);
+    sweep(-0.3, 0, 0.05);
+    delay(1000);
+  } // void syncESC(void)
+  
 };  // class ElectronicSpeedController 
 
 #endif
