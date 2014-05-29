@@ -52,12 +52,14 @@
 
 
 // #define DEBUGGING_THROTTLE
-#define THROTTLE_MIN 0.05                 // the lowest throttle to send the ESC
-#define THROTTLE_CC_BUMP 0.002            // CC = 0.2% throttle increase; 50/s = 10s to hit 100% on cruise
-#define THROTTLE_SMOOTHNESS 0.05          // default "smoothing" factor; 0.05 =~ 1s, 0.02 =~ 2s
-#define THROTTLE_MIN_CC 0.05              // minimum / inital speed for cruise crontrol
-                                          // note that a different value may be stored in EEPROM
-#define THROTTLE_CRUISE_RETURN_MS 5000    // time (ms) when re-grabbing cruise will use the previous CC level
+#define THROTTLE_MIN 0.05                      // the lowest throttle to send the ESC
+#define THROTTLE_CC_BUMP 0.002                 // CC = 0.2% throttle increase; 50/s = 10s to hit 100% on cruise
+#define THROTTLE_Z_BUMP (THROTTLE_CC_BUMP * 2) // Z button == 2x CC bump 
+#define THROTTLE_SMOOTHNESS 0.05               // default "smoothing" factor; 0.05 =~ 1s, 0.02 =~ 2s
+#define THROTTLE_Z_SMOOTHNESS 1.0              // Z button == no smoothing
+#define THROTTLE_MIN_CC 0.05                   // minimum / inital speed for cruise crontrol
+                                               // note that a different value may be stored in EEPROM
+#define THROTTLE_CRUISE_RETURN_MS 5000         // time (ms) when re-grabbing cruise will use the previous CC level
 #include "Throttle.h"
 
 

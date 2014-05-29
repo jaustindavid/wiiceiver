@@ -234,13 +234,13 @@ class Throttle {
       if (chuck.C) { // cruise control!
         // holding Z + C == faster CC changes
         if (chuck.Y > 0.5 && throttle < 1.0) {
-          throttle += THROTTLE_CC_BUMP * (chuck.Z ? 2 : 1);
+          throttle += chuck.Z ? THROTTLE_Z_BUMP : THROTTLE_CC_BUMP;
         } else {
           if (chuck.Y < -0.5 && throttle > 0) {
-            throttle -= THROTTLE_CC_BUMP * (chuck.Z ? 2 : 1);
+            throttle -= chuck.Z ? THROTTLE_Z_BUMP : THROTTLE_CC_BUMP;
           } else {
             if (throttle < autoCruise) {
-              throttle += THROTTLE_CC_BUMP * (chuck.Z ? 4 : 2);
+              throttle += 2 * (chuck.Z ? THROTTLE_Z_BUMP : THROTTLE_CC_BUMP);
             }
           }
         } // if (chuck.Y > 0.5 && throttle < 1.0) - else
@@ -257,7 +257,7 @@ class Throttle {
         smoothed = smoother.compute(throttle, 1.0);
       } else {
         // holding Z == more aggressive smoothing (e.g., more responsive)
-        smoothed = smoother.compute(throttle, THROTTLE_SMOOTHNESS * (chuck.Z ? 4 : 1));
+        smoothed = smoother.compute(throttle, chuck.Z ? THROTTLE_Z_SMOOTHNESS : THROTTLE_SMOOTHNESS);
       }
       
 #ifdef DEBUGGING_THROTTLE

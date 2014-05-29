@@ -56,16 +56,9 @@ void init(int pin) {
   
   delay(21);  // give the "last written" protection room to work
 #ifdef DEBUGGING_ESC
-  Serial.print("initializing ESC...");
+  Serial.println("initializing ESC...");
 #endif
 
-/*
-  // startup sequence: some small negative input for ~1s, then idle
-  setLevel(0.30);
-  delay(40);   
-  setLevel(-0.30);
-  delay(1000);
-*/
   syncESC();
   setLevel(0);
   
@@ -83,7 +76,7 @@ void init(int pin) {
  */
 void setLevel(float level) {
   int newAngle = (int)(ESC_CENTER + (ESC_MAX_ANGLE - ESC_CENTER) * level);
-  if (lastWrite + 20 > millis()) {
+  if (lastWrite + 19 > millis()) {
 #ifdef DEBUGGING_ESC
     Serial.println("Too recently written; skipping");
 #endif
@@ -112,21 +105,33 @@ void setLevel(float level) {
 private:
 
 #define STEP_DELAY 20
+#define SYNC_LIMIT 0.6
 
   void sweep(float startLevel, float endLevel, float step) {
-    for (float level = startLevel; level <= endLevel; level += step) {
+#ifdef DEBUGGING_ESC
+    Serial.print("sweep: ");
+    Serial.print(startLevel);
+    Serial.print(" to ");
+    Serial.print(endLevel);
+    Serial.print(" by ");
+    Serial.println(step);
+#endif
+    for (float level = startLevel; level != endLevel; level += step) {
       setLevel(level);
       delay(STEP_DELAY);
     }
   } // sweep(float startLevel, float endLevel, float step)
+
   
-  
+  // startup sequence: some small range of inputs, then idle
   void syncESC(void) {
-    setLevel(0);
-    delay(STEP_DELAY);
-    sweep(0, 0.5, 0.1);
-    sweep(0.5, -0.5, 0.1);
-    sweep(-0.5, 0, 0.1);
+/*    
+    sweep(0, SYNC_LIMIT, SYNC_LIMIT/2);
+    delay(500);
+    sweep(SYNC_LIMIT, -SYNC_LIMIT, -SYNC_LIMIT/2);
+    delay(500);
+*/
+    sweep(-SYNC_LIMIT, 0, SYNC_LIMIT/2);
     delay(1000);
   } // void syncESC(void)
   
