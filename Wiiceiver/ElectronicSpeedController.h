@@ -120,6 +120,7 @@ private:
       setLevel(level);
       delay(STEP_DELAY);
     }
+    setLevel(endLevel);
   } // sweep(float startLevel, float endLevel, float step)
 
   
