@@ -31,7 +31,7 @@
 #include <Servo.h>
 #include <EEPROM.h>
 
-#define DEBUGGING
+// #define DEBUGGING
 
 #include "Blinker.h"
 
@@ -48,15 +48,22 @@
 
 // #define DEBUGGING_SMOOTHER
 #define SMOOTHER_MIN_STEP 0.003           // minimum change for smoothing; 0.003 for ~1s, 0.001 for ~2s
+#define SMOOTHER_BRAKES_PROGRAM 0
+#define SMOOTHER_THROTTLE_PROGRAM 1
+#define SMOOTHER_THROTTLE_Z_PROGRAM 2
+#define SMOOTHER_CRUISE_PROGRAM 3
+#define SMOOTHER_CRUISE_Z_PROGRAM 4
 #include "Smoother.h"
 
 
-// #define DEBUGGING_THROTTLE
+#define DEBUGGING_THROTTLE
 #define THROTTLE_MIN 0.05                      // the lowest throttle to send the ESC
-#define THROTTLE_CC_BUMP 0.002                 // CC = 0.2% throttle increase; 50/s = 10s to hit 100% on cruise
+#define THROTTLE_CC_BUMP 0.004                 // CC = 0.2% throttle increase; 50/s = 10s to hit 100% on cruise
 #define THROTTLE_Z_BUMP (THROTTLE_CC_BUMP * 2) // Z button == 2x CC bump 
 #define THROTTLE_SMOOTHNESS 0.05               // default "smoothing" factor; 0.05 =~ 1s, 0.02 =~ 2s
 #define THROTTLE_Z_SMOOTHNESS 1.0              // Z button == no smoothing
+#define THROTTLE_Z_MAX_RATE 1.0                // maximum sweep in a single 20ms interval; 1.0 = bangbang
+#define THROTTLE_MAX_RATE 0.004                //    0.5 =~ 5s to full blast
 #define THROTTLE_MIN_CC 0.05                   // minimum / inital speed for cruise crontrol
                                                // note that a different value may be stored in EEPROM
 #define THROTTLE_CRUISE_RETURN_MS 5000         // time (ms) when re-grabbing cruise will use the previous CC level

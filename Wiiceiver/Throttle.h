@@ -177,6 +177,7 @@ class Throttle {
       return retval;
     } // checkCruiseReturn(Chuck chuck)
 
+
     
   public:    
     
@@ -233,11 +234,11 @@ class Throttle {
       
       if (chuck.C) { // cruise control!
         // holding Z + C == faster CC changes
-        if (chuck.Y > 0.5 && throttle < 1.0) {
-          throttle += chuck.Z ? THROTTLE_Z_BUMP : THROTTLE_CC_BUMP;
+        if (chuck.Y > 0.25 && throttle < 1.0) {
+          throttle += chuck.Y * (chuck.Z ? THROTTLE_Z_BUMP : THROTTLE_CC_BUMP);
         } else {
-          if (chuck.Y < -0.5 && throttle > 0) {
-            throttle -= chuck.Z ? THROTTLE_Z_BUMP : THROTTLE_CC_BUMP;
+          if (chuck.Y < -0.25 && throttle > 0) {
+            throttle += chuck.Y * (chuck.Z ? THROTTLE_Z_BUMP : THROTTLE_CC_BUMP);
           } else {
             if (throttle < autoCruise) {
               throttle += 2 * (chuck.Z ? THROTTLE_Z_BUMP : THROTTLE_CC_BUMP);
@@ -254,17 +255,16 @@ class Throttle {
 
       // don't smooth brakes
       if (smoothed <= 0 || throttle < 0) {
-        smoothed = smoother.compute(throttle, 1.0);
+        smoothed = smoother.smooth(throttle, SMOOTHER_BRAKES_PROGRAM);
       } else {
-        // holding Z == more aggressive smoothing (e.g., more responsive)
-        smoothed = smoother.compute(throttle, chuck.Z ? THROTTLE_Z_SMOOTHNESS : THROTTLE_SMOOTHNESS);
+        smoothed = smoother.smooth(throttle, 1 + chuck.C*2 + chuck.Z);
       }
       
 #ifdef DEBUGGING_THROTTLE
       Serial.print(F("position: "));
-      Serial.print(throttle, 4);
+      Serial.print(throttle);
       Serial.print(F(" smoothed: "));
-      Serial.println(smoothed, 4);
+      Serial.println(smoothed);
 #endif
 
       return smoothed;

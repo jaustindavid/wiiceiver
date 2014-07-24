@@ -41,6 +41,7 @@ class ElectronicSpeedController {
 private:
   Servo _esc;
   int angle;                // the angle most recently written to _esc;
+  int microseconds;         // the time (ms) most recently written
   unsigned long lastWrite;  // time in millis() when it was last written
 
 public:
@@ -76,6 +77,14 @@ void init(int pin) {
  */
 void setLevel(float level) {
   int newAngle = (int)(ESC_CENTER + (ESC_MAX_ANGLE - ESC_CENTER) * level);
+  int newUs;
+  if (level > 0) {
+    newUs = (int)(1600 + (2000 - 1600) * level);
+  } else if (level < 0) {
+    newUs = (int)(1400 + (2000 - 1400) * level);
+  } else {
+    newUs = 1500;
+  }
   if (lastWrite + 19 > millis()) {
 #ifdef DEBUGGING_ESC
     Serial.println("Too recently written; skipping");
@@ -89,9 +98,14 @@ void setLevel(float level) {
     Serial.print(_esc.readMicroseconds());
     Serial.print(F("us; new angle: "));
     Serial.print(newAngle);
+    Serial.print(F(" = "));
+    Serial.print(newUs);
+    Serial.print(F("us"));
 #endif
     angle = newAngle;
+    microseconds = newUs;
     _esc.write(angle);
+    // _esc.writeMicroseconds(microseconds);
 #ifdef DEBUGGING_ESC
     Serial.print(F(": ESC now: "));
     Serial.println(_esc.readMicroseconds());
