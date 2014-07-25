@@ -34,6 +34,8 @@
 #include "Chuck.h"
 #include "Smoother.h"
 
+#define DEBUGGING_THROTTLE_CCR
+
 /*
  * Manages the throttle input; presents a smoothed output, [ -1 .. 1 ]
  */
@@ -142,6 +144,13 @@ class Throttle {
         Serial.print("checkCruiseReturn: ");
 #endif 
 
+      if (chuck.C) {
+        #ifdef DEBUGGING_THROTTLE_CCR
+        Serial.print("prev: ");
+        Serial.print(previousCruiseLevel);
+        #endif 
+      }
+
       if (chuck.C && !previousC && 
           previousCruiseMS + THROTTLE_CRUISE_RETURN_MS > millis()) {
 #ifdef DEBUGGING_THROTTLE_CCR
@@ -151,12 +160,14 @@ class Throttle {
       }
       
       if (! chuck.C && previousC) {
+        previousCruiseLevel = getThrottle();
+        previousCruiseMS = millis();
+        retval = false;
 #ifdef DEBUGGING_THROTTLE_CCR
         Serial.print("C -> !C");
+        Serial.print("saving prev: ");
+        Serial.print(previousCruiseLevel);
 #endif
-        previousCruiseMS = millis();
-        previousCruiseLevel = getThrottle();
-        retval = false;
       }
       
       // any joystick input kills cruise return
@@ -165,7 +176,7 @@ class Throttle {
 #ifdef DEBUGGING_THROTTLE_CCR
         Serial.print("stick");
 #endif
-        previousCruiseMS = 0;
+        previousCruiseMS = previousCruiseLevel = 0;
         retval = false;
       }
 
@@ -177,10 +188,38 @@ class Throttle {
       return retval;
     } // checkCruiseReturn(Chuck chuck)
 
-
     
-  public:    
+    // returns the throttle position appropriate for cruise
+    // This is called if C is down
+    // Theory of Operation:
+    //   checkAutoCruise: if looking to setting, don't change throttle
+    //   !C -> C: 
+    float cruiseControl(Chuck chuck) {
+      
+      if (checkAutoCruise(chuck)) {                                  // setting auto cruise?
+        // we're looking for autoCruise, so do that;
+        // don't change the throttle position
+        #ifdef DEBUGGING_THROTTLE_CC
+        Serial.println();
+        #endif
+        // return throttle; fallthrough is OK
+      } else if (chuck.Y > 0.25) {                                   // accel?
+        // speed up, but not past 1.0 (full blast)
+        throttle += chuck.Y * THROTTLE_CC_BUMP;
+        throttle = min(throttle, 1.0);
+      } else if (chuck.Y < -0.25) {                                  // decel?
+        throttle += chuck.Y * THROTTLE_CC_BUMP;
+        throttle = max(throttle, 0.0);
+      } else if (throttle < autoCruise) {                            // auto cruise?
+        throttle += 4 * THROTTLE_CC_BUMP;
+      } 
+      return throttle;
+    } // float cruiseControl(void)
     
+    
+  public:
+    
+    // constructor
     Throttle() {
       smoother = Smoother();
       throttle = 0;
@@ -192,23 +231,6 @@ class Throttle {
     void init(void) {
       readAutoCruise();
     } // init()
-    
-    
-    // returns the throttle position appropriate for cruise
-    float cruiseControl(Chuck chuck) {
-      if (throttle < autoCruise) {
-        throttle += 4 * THROTTLE_CC_BUMP;
-      } else if (chuck.Y > 0.25) {  
-        // speed up, but not past 1.0 (full blast)
-        throttle += chuck.Y * THROTTLE_CC_BUMP;
-        throttle = min(throttle, 1.0);
-      } else if (chuck.Y < -0.25) {
-        throttle += chuck.Y * THROTTLE_CC_BUMP;
-        throttle = max(throttle, 0.0);
-      } 
-      
-      return throttle;
-    } // float cruiseControl(void)
 
     
     
@@ -236,49 +258,41 @@ class Throttle {
       Serial.print("; ");
 #endif
 
-      // we're looking for autoCruise, so do that;
-      // don't change the throttle position
-      if (checkAutoCruise(chuck)) {
-        return throttle; 
-      }
-
-      // CC return: in CC mode, drop C, then resume shortly after 
-      // (with no other input) -- resume the previous CC 
       if (checkCruiseReturn(chuck)) {
-#ifdef DEBUGGING_THROTTLE
-        Serial.print(" returning previous cruise level");
-#endif         
+        // CC return: in CC mode, drop C, then resume shortly after 
+        // (with no other input) -- resume the previous CC 
+        #ifdef DEBUGGING_THROTTLE
+        Serial.print(" returning previous cruise level (");
+        Serial.print(previousCruiseLevel);
+        Serial.print(")");
+        #endif         
         throttle = previousCruiseLevel;
-      }  
-      
-      if (chuck.C) { 
+      } else if (chuck.C) { 
         // cruise control!
         throttle = cruiseControl(chuck);
-      } else if (smoothed <= 0 || throttle < 0) { 
+      } else if (chuck.Y < -THROTTLE_MIN) { 
         // brakes!
-        smoothed = smoother.smooth(throttle, SMOOTHER_BRAKES_PROGRAM);
+        throttle = smoother.smooth(chuck.Y, SMOOTHER_BRAKES_PROGRAM);
       } else {
-        smoothed = smoother.smooth(throttle, (chuck.Z ? SMOOTHER_THROTTLE_Z_PROGRAM : SMOOTHER_THROTTLE_PROGRAM));
+        throttle = smoother.smooth(chuck.Y, (chuck.Z ? SMOOTHER_THROTTLE_Z_PROGRAM : SMOOTHER_THROTTLE_PROGRAM));
       }
       
 #ifdef DEBUGGING_THROTTLE
       Serial.print(F("throttle: "));
-      Serial.print(throttle);
-      Serial.print(F(" smoothed: "));
-      Serial.println(smoothed);
+      Serial.println(throttle);
 #endif
 
-      return smoothed;
+      return throttle;
     } // float update(void)
     
     
     float getThrottle(void) {
-      return smoothed;
+      return throttle;
     } // float getThrottle()
     
     
     void zero(void) {
-      throttle = smoothed = 0;
+      throttle = 0;
       smoother.zero();
     } // void zero(void)
 

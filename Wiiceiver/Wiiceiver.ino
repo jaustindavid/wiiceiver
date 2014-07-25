@@ -101,17 +101,17 @@ void maybeCalibrate(void) {
     delay(20);
   }
 
-#ifdef DEBUGGING  
+// #ifdef DEBUGGING
   Serial.print("C = ");
   Serial.println(ctr);
-#endif
+// #endif
 
   if (chuck.C == 1 && chuck.isActive()) {
     chuck.calibrateCenter();
     chuck.writeEEPROM();
-#ifdef DEBUGGING
+// #ifdef DEBUGGING
     Serial.println("Calibrated");
-#endif
+// #endif
   }
 
   red.update(1);
