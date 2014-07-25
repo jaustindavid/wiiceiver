@@ -87,7 +87,7 @@ class Smoother {
       #define DECR 1
       #define SMOOTHNESS 2
       float programMap[5][3] = {
-        // INCR, DECR,   SMOOTHNESS
+        // INCR,  DECR,  SMOOTHNESS
           {0.000, 0.010, 1.00}, // BRAKES
           {0.004, 0.005, 0.10}, // THROTTLE
           {0.100, 0.100, 0.50}, // THROTTLE + Z

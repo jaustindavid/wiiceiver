@@ -77,6 +77,7 @@ void init(int pin) {
  */
 void setLevel(float level) {
   int newAngle = (int)(ESC_CENTER + (ESC_MAX_ANGLE - ESC_CENTER) * level);
+  /* proably dead: attempt to drive usecs to game throttle positions */
   int newUs;
   if (level > 0) {
     newUs = (int)(1600 + (2000 - 1600) * level);
@@ -85,6 +86,7 @@ void setLevel(float level) {
   } else {
     newUs = 1500;
   }
+  
   if (lastWrite + 19 > millis()) {
 #ifdef DEBUGGING_ESC
     Serial.println("Too recently written; skipping");
