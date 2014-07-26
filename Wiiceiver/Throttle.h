@@ -62,26 +62,30 @@ class Throttle {
 #endif  
       } else {
 #ifdef DEBUGGING_THROTTLE
-        Serial.print("; ignoring, setting autoCruise = ");
+        Serial.print("; ignoring, leaving autoCruise = ");
         Serial.println(autoCruise);
 #endif        
       }
-    } // readAutoCruise(void) 
+    } // float readAutoCruise(void) 
     
-    
+
+    // sets the internal autoCruise var to the current throttle position,
+    // and writes it to EEPROM    
     void writeAutoCruise(void) {
+      autoCruise = throttle;
       int storedValue = autoCruise * 100;
       EEPROM.write(EEPROM_AUTOCRUISE_ADDY, storedValue);
 #ifdef DEBUGGING_THROTTLE
       Serial.print("Storing autoCruise as ");
       Serial.println(storedValue);
 #endif         
-    }
-    
+    } // void writeAutoCruise(void)
+
+
     /*
      * returns 'true' if we're in a "set autocruise level" state:
      *   while in cruise (chuck.C), with no throttle input (chuck.Y =~ 0), 
-     *   nonzero throttle, full X deflection (chuck.X > 0.75) ... for N cycles
+     *   holding Z, full X deflection (chuck.X > 0.75) ... for N cycles
      * set "autoCruise" to the current throttle level.
      *   
      */
@@ -93,15 +97,16 @@ class Throttle {
         xCounter = 0;
         return false;
       }
-      if (abs(chuck.Y) < 0.5 && 
-          abs(chuck.X) > 0.75) {
+      if (abs(chuck.Y) < 0.25 && 
+          abs(chuck.X) > 0.75 &&
+          chuck.Z) {
         ++xCounter;
 #ifdef DEBUGGING_THROTTLE_CAC
         Serial.print("checkAutoCruise: xCounter = ");
         Serial.println(xCounter);
 #endif
         if (xCounter == 150) { // ~3s holding X
-          setAutoCruise();  
+          writeAutoCruise();  
         }
         return true;
       } else {
@@ -117,15 +122,6 @@ class Throttle {
       }
     } // bool checkAutoCruise(void)
     
-    
-    void setAutoCruise(void) {
-#ifdef DEBUGGING_THROTTLE_SAC
-      Serial.print("Setting autoCruise = ");
-      Serial.println(throttle);
-#endif
-      autoCruise = throttle;
-      writeAutoCruise();
-    } // setAutoCruise(void)
 
 
     /*
@@ -199,9 +195,6 @@ class Throttle {
       if (checkAutoCruise(chuck)) {                                  // setting auto cruise?
         // we're looking for autoCruise, so do that;
         // don't change the throttle position
-        #ifdef DEBUGGING_THROTTLE_CC
-        Serial.println();
-        #endif
         // return throttle; fallthrough is OK
       } else if (chuck.Y > 0.25) {                                   // accel?
         // speed up, but not past 1.0 (full blast)
@@ -270,6 +263,9 @@ class Throttle {
       } else if (chuck.C) { 
         // cruise control!
         throttle = cruiseControl(chuck);
+        // don't actually use a smoothed throttle, but keep the smoother algorithm warm
+        // so when we drop the cruise, throttle (with stick @ 0) will "smooth" back to neutral
+        smoother.smooth(throttle, SMOOTHER_THROTTLE_PROGRAM);
       } else if (chuck.Y < -THROTTLE_MIN) { 
         // brakes!
         throttle = smoother.smooth(chuck.Y, SMOOTHER_BRAKES_PROGRAM);
