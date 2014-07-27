@@ -50,21 +50,16 @@ class Throttle {
     
     void readAutoCruise(void) {
       byte storedValue = EEPROM.read(EEPROM_AUTOCRUISE_ADDY);
-#ifdef DEBUGGING_THROTTLE
       Serial.print("Read autoCruise from EEPROM: ");
       Serial.print(storedValue);
-#endif
+
       if (storedValue > 0 && storedValue < 100) {
         autoCruise = 0.01 * storedValue;
-#ifdef DEBUGGING_THROTTLE
         Serial.print("; setting autoCruise = ");
         Serial.println(autoCruise);
-#endif  
       } else {
-#ifdef DEBUGGING_THROTTLE
         Serial.print("; ignoring, leaving autoCruise = ");
         Serial.println(autoCruise);
-#endif        
       }
     } // float readAutoCruise(void) 
     
@@ -85,7 +80,8 @@ class Throttle {
     /*
      * returns 'true' if we're in a "set autocruise level" state:
      *   while in cruise (chuck.C), with no throttle input (chuck.Y =~ 0), 
-     *   holding Z, full X deflection (chuck.X > 0.75) ... for N cycles
+     *   holding Z, full X deflection (chuck.X > 0.75) ... for N cycles,
+     *   within 2 minutes of startup ...
      * set "autoCruise" to the current throttle level.
      *   
      */
@@ -97,9 +93,10 @@ class Throttle {
         xCounter = 0;
         return false;
       }
-      if (abs(chuck.Y) < 0.25 && 
-          abs(chuck.X) > 0.75 &&
-          chuck.Z) {
+      if (millis() < 120 * 1000 &&
+          chuck.Z &&
+          abs(chuck.Y) < 0.25 && 
+          abs(chuck.X) > 0.75) {
         ++xCounter;
 #ifdef DEBUGGING_THROTTLE_CAC
         Serial.print("checkAutoCruise: xCounter = ");
