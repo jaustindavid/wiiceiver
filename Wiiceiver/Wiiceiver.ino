@@ -414,19 +414,13 @@ void loop() {
   red.run();
   chuck.update();
   
+  // for forcing a watchdog timeout
   #undef SUICIDAL_Z
   #ifdef SUICIDAL_Z
   if (chuck.Z) {
-    Serial.println(WDTO_8S, BIN);
-    Serial.println((1<<WDIE) | (1<<WDE) | (WDTO_8S), BIN);
-    Serial.println((1<<WDIE) | (1<<WDE), BIN);
-    Serial.println((1<<WDIE) | (1<<WDE) | (1<<WDP3) | (0<<WDP2) | (0<<WDP1) | (1<<WDP0), BIN);
-    Serial.println(B01100000 | WDTO_8S, BIN);
-    Serial.println((1<<WDIE) | (1<<WDE) | (0<<WDP3) | (1<<WDP2) | (0<<WDP1) | (0<<WDP0), BIN);
-    Serial.println(B01100000 | WDTO_250MS, BIN);
     Serial.println("sleepin' to reset");
     delay(9000);
-  }
+  } // suicide!
   
   
   #endif 
