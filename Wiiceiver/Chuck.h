@@ -64,7 +64,6 @@ class Chuck {
 #endif
 #define DEFAULT_Y_ZERO 128
 #define DEFAULT_X_ZERO 128
-#define EEPROM_Y_ADDY 0
 
 private:
   byte status[6], lastStatus[6];

@@ -34,14 +34,12 @@
 #include "Chuck.h"
 #include "Smoother.h"
 
-#define DEBUGGING_THROTTLE_CCR
 
 /*
  * Manages the throttle input; presents a smoothed output, [ -1 .. 1 ]
  */
 
 class Throttle {
-#define EEPROM_AUTOCRUISE_ADDY 1
   private:
     float autoCruise, throttle, previousCruiseLevel;
     int xCounter;
@@ -121,6 +119,7 @@ class Throttle {
     
 
 
+    // #define DEBUGGING_THROTTLE_CCR
     /*
      * true if we should return to the previous CC value
      * ... because we were holding C for a bit, then stopped (coasted),
@@ -254,7 +253,7 @@ class Throttle {
         #ifdef DEBUGGING_THROTTLE
         Serial.print(" returning previous cruise level (");
         Serial.print(previousCruiseLevel);
-        Serial.print(")");
+        Serial.print(") ");
         #endif         
         throttle = previousCruiseLevel;
       } else if (chuck.C) { 

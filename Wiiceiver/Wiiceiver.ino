@@ -27,9 +27,16 @@
  *
  */
 
+#include <avr/wdt.h> 
 #include <Wire.h>
 #include <Servo.h>
 #include <EEPROM.h>
+
+
+#define EEPROM_Y_ADDY 0
+#define EEPROM_AUTOCRUISE_ADDY 1
+#define EEPROM_WDC_ADDY 2
+
 
 // #define DEBUGGING
 
@@ -76,6 +83,42 @@ Blinker green, red;
 Throttle throttle;
 
 
+/********
+ *  WATCHDOG STUFF
+ * I referenced the following:
+ * http://forum.arduino.cc/index.php?topic=63651.0
+ * http://tushev.org/articles/arduino/item/46-arduino-and-watchdog-timer
+ * http://www.ivoidwarranties.com/2012/02/arduino-mega-optiboot.html
+ *
+ ********/
+ 
+/*
+ * setup a watchdog timer for the given reset interval
+ *
+ * constants: WDTO_250MS, WDTO_8S, WDTO_60MS, etc
+ */
+void watchdog_setup(byte wd_interval) {
+  wdt_reset();
+  wdt_enable(wd_interval);
+  cli();
+  WDTCSR |= (1<<WDCE) | (1<<WDE) | (1<<WDIE); 
+  sei();
+} // watchdog_setup(unsigned int wd_interval)
+
+
+// increment a _W_atch _D_og _C_ounter stored in EEPROM, for future debugging
+ISR(WDT_vect) {
+  byte wdt_counter = EEPROM.read(EEPROM_WDC_ADDY);
+  EEPROM.write(EEPROM_WDC_ADDY, wdt_counter + 1);
+} // ISR for the watchdog timer
+
+// display the current watchdog counter
+void display_WDC(void) {
+  byte wdt_counter = EEPROM.read(EEPROM_WDC_ADDY);
+  Serial.print("Watchdog Resets: ");
+  Serial.println((byte)(wdt_counter + 1));
+} // display_WDC()
+
 
 
 // maybe calibrate the joystick:
@@ -101,31 +144,31 @@ void maybeCalibrate(void) {
     delay(20);
   }
 
-// #ifdef DEBUGGING
+  #ifdef DEBUGGING
   Serial.print("C = ");
   Serial.println(ctr);
-// #endif
+  #endif
 
   if (chuck.C == 1 && chuck.isActive()) {
     chuck.calibrateCenter();
     chuck.writeEEPROM();
-// #ifdef DEBUGGING
+    // side effect: reset the WDC
+    EEPROM.write(EEPROM_WDC_ADDY, 255);
     Serial.println("Calibrated");
-// #endif
   }
 
   red.update(1);
   green.update(1);
 } // void maybeCalibrate() 
 
-
+\
 // an unambiguous startup display
 void splashScreen() {
   int i;
   digitalWrite(pinLocation(GREEN_LED_ID), HIGH);
   digitalWrite(pinLocation(RED_LED_ID), HIGH);
-  delay(500);
-  for (i = 0; i < 10; i++) {
+  delay(250);
+  for (i = 0; i < 5; i++) {
     digitalWrite(pinLocation(GREEN_LED_ID), HIGH);
     digitalWrite(pinLocation(RED_LED_ID), LOW);
     delay(50);
@@ -135,7 +178,7 @@ void splashScreen() {
   }
   digitalWrite(pinLocation(GREEN_LED_ID), HIGH);
   digitalWrite(pinLocation(RED_LED_ID), HIGH);
-  delay(500);
+  delay(250);
   digitalWrite(pinLocation(GREEN_LED_ID), LOW);    
   digitalWrite(pinLocation(RED_LED_ID), LOW);  
 } // void splashScreen(void)
@@ -193,6 +236,7 @@ void freakOut(void) {
     blinkCtr ++;
     chuck.update();
     delay(20);
+    wdt_reset();
   }
   green.start(1);
   red.start(1);
@@ -314,16 +358,18 @@ void handleInactivity() {
 
 
 
+
 void setup() {
+  watchdog_setup(WDTO_8S);
   Serial.begin(115200);
-#ifdef DEBUGGING
+
   Serial.print("Wiiceiver (");
   Serial.print(__DATE__);
   Serial.print(" ");
   Serial.print(__TIME__);
   Serial.println(") starting");
-#endif
-
+  display_WDC();
+  
   green.init(pinLocation(GREEN_LED_ID));
   red.init(pinLocation(RED_LED_ID));
 
@@ -355,6 +401,7 @@ void setup() {
   
   green.update(1);
   red.update(1);
+  watchdog_setup(WDTO_250MS);
 } // void setup()
 
 
@@ -362,10 +409,27 @@ void setup() {
 void loop() {
   static float lastThrottleValue = 0;
   unsigned long startMS = millis();
+  wdt_reset();
   green.run();
   red.run();
   chuck.update();
   
+  #undef SUICIDAL_Z
+  #ifdef SUICIDAL_Z
+  if (chuck.Z) {
+    Serial.println(WDTO_8S, BIN);
+    Serial.println((1<<WDIE) | (1<<WDE) | (WDTO_8S), BIN);
+    Serial.println((1<<WDIE) | (1<<WDE), BIN);
+    Serial.println((1<<WDIE) | (1<<WDE) | (1<<WDP3) | (0<<WDP2) | (0<<WDP1) | (1<<WDP0), BIN);
+    Serial.println(B01100000 | WDTO_8S, BIN);
+    Serial.println((1<<WDIE) | (1<<WDE) | (0<<WDP3) | (1<<WDP2) | (0<<WDP1) | (0<<WDP0), BIN);
+    Serial.println(B01100000 | WDTO_250MS, BIN);
+    Serial.println("sleepin' to reset");
+    delay(9000);
+  }
+  
+  
+  #endif 
   if (!chuck.isActive()) {
 #ifdef DEBUGGING
     Serial.println("INACTIVE!!");
@@ -397,5 +461,8 @@ void loop() {
     delay(delayMS);
   } // if (chuck.isActive())
 }
+
+
+
 
 

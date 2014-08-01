@@ -39,19 +39,15 @@ boolean fixValue(int address, byte desiredValue) {
 }
 
 void setup() {
-  pinMode(RED_LED, OUTPUT);
-  pinMode(GREEN_LED, OUTPUT);
-  digitalWrite(RED_LED, LOW);
-  digitalWrite(GREEN_LED, LOW);
+  Serial.begin(115200);
 
-  if (fixValue(0, 255)) {
-    digitalWrite(RED_LED, HIGH);
+  for (int addy = 0; addy <= 2; addy ++) {
+    if (fixValue(addy, 255)) {
+      Serial.print("fixed address #");
+      Serial.println(addy);
+    }
   }
-  
-  if (fixValue(1, 255)) {
-    digitalWrite(GREEN_LED, HIGH);
-  }
-
+  Serial.println("Wiiceiver factory reset is complete!");
 }
 
 void loop() {
