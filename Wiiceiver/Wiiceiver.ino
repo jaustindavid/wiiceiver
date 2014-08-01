@@ -32,6 +32,8 @@
 #include <Servo.h>
 #include <EEPROM.h>
 
+#define WIICEIVER_VERSION "1.1 alpha"
+
 // addys for vars stored in EEPROM
 #define EEPROM_Y_ADDY 0
 #define EEPROM_AUTOCRUISE_ADDY 1
@@ -358,14 +360,16 @@ void handleInactivity() {
 
 
 void setup() {
-  watchdog_setup(WDTO_8S);
+  wdt_disable();
   Serial.begin(115200);
 
-  Serial.print("Wiiceiver (");
+  Serial.print("Wiiceiver v ");
+  Serial.print(WIICEIVER_VERSION);
+  Serial.print(" (compiled ");
   Serial.print(__DATE__);
   Serial.print(" ");
   Serial.print(__TIME__);
-  Serial.println(") starting");
+  Serial.println(")");
   display_WDC();
   
   green.init(pinLocation(GREEN_LED_ID));
