@@ -90,9 +90,7 @@ class Smoother {
         // INCR,  DECR,  SMOOTHNESS
           {0.000, 0.010, 1.00}, // BRAKES
           {0.004, 0.005, 0.10}, // THROTTLE
-          {0.100, 0.100, 0.50}, // THROTTLE + Z
-          {0.002, 0.003, 0.05}, // CRUISE
-          {0.004, 0.006, 0.05}  // CRUISE + Z
+          {1.000, 1.000, 1.00}, // THROTTLE + Z
       };
       float returnValue = target;
 

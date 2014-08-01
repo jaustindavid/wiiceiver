@@ -32,7 +32,7 @@
 #include <Servo.h>
 #include <EEPROM.h>
 
-
+// addys for vars stored in EEPROM
 #define EEPROM_Y_ADDY 0
 #define EEPROM_AUTOCRUISE_ADDY 1
 #define EEPROM_WDC_ADDY 2
@@ -58,8 +58,6 @@
 #define SMOOTHER_BRAKES_PROGRAM 0
 #define SMOOTHER_THROTTLE_PROGRAM 1
 #define SMOOTHER_THROTTLE_Z_PROGRAM 2
-#define SMOOTHER_CRUISE_PROGRAM 3
-#define SMOOTHER_CRUISE_Z_PROGRAM 4
 #include "Smoother.h"
 
 
