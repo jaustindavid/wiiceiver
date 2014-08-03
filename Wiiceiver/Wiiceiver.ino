@@ -270,6 +270,7 @@ bool waitForActivity(void) {
   
   chuck.update();
   while (! chuck.isActive() && timer > millis()) {
+    wdt_reset();
     delay(20);
     chuck.update();
   }
@@ -308,6 +309,7 @@ bool startChuck() {
     Serial.print("(Re)starting the nunchuck: #");
     Serial.println(tries);
 #endif
+    wdt_reset();
     chuck.setup();
     chuck.readEEPROM();
     tries ++;
@@ -321,6 +323,7 @@ bool startChuck() {
 
 // pretty much what it sounds like
 void handleInactivity() {
+  watchdog_setup(WDTO_8S);
 #ifdef DEBUGGING
   Serial.print(millis());
   Serial.println(": handling inactivity");
@@ -347,13 +350,15 @@ void handleInactivity() {
 #endif  
   while (chuck.Y > 0.1 || chuck.Y < -0.1) {
     chuck.update();
+    wdt_reset();
     delay(20);
   }
   
 #ifdef DEBUGGING
   Serial.print(millis());
   Serial.println(": finished inactivity -- chuck is active");
-#endif  
+#endif
+  watchdog_setup(WDTO_250MS);
 } // handleInactivity()
 
 
