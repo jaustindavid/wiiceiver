@@ -91,6 +91,7 @@ class Smoother {
           {0.000, 0.010, 1.00}, // BRAKES
           {0.004, 0.005, 0.10}, // THROTTLE
           {1.000, 1.000, 1.00}, // THROTTLE + Z
+          {0.004, 0.005, 0.10}, // "resume" cruise
       };
       float returnValue = target;
 
