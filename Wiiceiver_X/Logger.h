@@ -35,17 +35,22 @@
 #include "Throttle.h"
 
 /*
+ * Attach one of these: 
+ *   http://www.panucatt.com/Current_Sensor_for_Arduino_p/cs-100a.htm
+ * to GND, 5V, A1.
+ *
  * Log: top 1s A, bottom 1s A, avg A, total charge -Ah, 
  * total discharge Ah, net consumed Ah, duration (s)
- * 
  */
 
 // #define DEBUGGING_LOGGER
+
 #define FAKE_AMMETER
 #ifdef FAKE_AMMETER
 #define analogRead(PIN) (random(20)+512)
 #endif
 
+#define HISTORY 10         // save 10 previous rides
 #define WRITE_PERIOD 30000 // 30s
 
 class Logger {
@@ -79,7 +84,7 @@ class Logger {
     // PRIVATE constructor
     Logger(void) {
       pin = lastWritten = 0;
-      throttle = Throttle::instance();
+      throttle = Throttle::getInstance();
     } // constructor
     
     
@@ -88,7 +93,7 @@ class Logger {
 
   
     void findUnusedAddy(void) {
-      int addy = sizeof(LogEntry);
+      int addy = EEPROM_LOGGER_ADDY;
       while (addy < 1024 && EEPROM.read(addy) != 255) {
         addy += sizeof(LogEntry);
       }
@@ -140,10 +145,10 @@ class Logger {
   public:
   
     
-    static Logger* instance(void) {
+    static Logger* getInstance(void) {
       static Logger logger;
       return &logger;
-    } // static Logger* instance()
+    } // static Logger* getInstance()
 
 
     void init(int newPin) {

@@ -58,6 +58,9 @@
 
 #define AMMETER_ID   6
 
+
+// #define DEBUGGING_PINS
+
  
 int CSEL = -1;
 void chipSelect (void) {
@@ -65,7 +68,7 @@ void chipSelect (void) {
   if (digitalRead(13) == HIGH) {
     CSEL = 0;
   } else {
-    // future: perform analogRead on pin 23
+    // future: perform analogRead on A0
     CSEL = 1;
   }
   

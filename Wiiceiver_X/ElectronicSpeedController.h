@@ -31,8 +31,10 @@
 #define ELECTRONICSPEEDCONTROLLER_H
 
 /*
- *    ESC wrapper class
+ *    ESC wrapper class: Singleton!
  */
+
+// #define DEBUGGING_ESC
 
 class ElectronicSpeedController {
 #define ESC_CENTER 90       // angle of the "center"; probably always 90
@@ -61,7 +63,7 @@ private:
 public:
 
 
-  static ElectronicSpeedController* instance(void) {
+  static ElectronicSpeedController* getInstance(void) {
     static ElectronicSpeedController esc;
     return &esc;
   }

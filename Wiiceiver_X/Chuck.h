@@ -58,6 +58,12 @@
  * keeping memory down for the ATtiny series.
  *
  */
+
+ 
+// #define DEBUGGING_CHUCK
+// #define DEBUGGING_CHUCK_ACTIVITY
+#define WII_ACTIVITY_COUNTER 100  // once per 20ms; 50 per second
+ 
 class Chuck {
 #ifndef WII_ACTIVITY_COUNTER
 #define WII_ACTIVITY_COUNTER 250  // consecutive static reads & it's considered inactive
@@ -197,10 +203,10 @@ private:
 
 public:
 
-  static Chuck* instance(void) {
+  static Chuck* getInstance(void) {
     static Chuck chuck;
     return &chuck;
-  }
+  } // Chuck* getInstance()
   
 
   void readEEPROM() {
