@@ -53,110 +53,106 @@
 #define TINYQUEUE_SIZE 50
 #endif
 
+template <typename T>
 class StaticQueue {
-  public:
-    StaticQueue();
-    void reset();
-    void enqueue(const float value);
-    float dequeue();
-    void dump(Print & printer);
-    bool isEmpty();
-    float sum();
     
   private:
     int _head, _tail;
     float _sum;
     float _queue[TINYQUEUE_SIZE + 1]; 
-}; // class StaticQueue
 
 
-// helper function --- increment an index, wrap if needed
-int increment(const int index) {
-  int ret = index + 1;
-  if (ret >= TINYQUEUE_SIZE) {
-	return 0;
-  } else {
-	return ret;
-  }
-} // increment
+    // helper function --- increment an index, wrap if needed
+    int increment(const int index) {
+      int ret = index + 1;
+      if (ret >= TINYQUEUE_SIZE) {
+    	return 0;
+      } else {
+    	return ret;
+      }
+    } // increment
+
+  public:
 
 
-// constructor
-StaticQueue::StaticQueue(void) {
-  reset();
-} // Queue()
+    // constructor
+    StaticQueue(void) {
+      reset();
+    } // Queue()
+    
+    
+    // reset the Queue to "empty"
+    void reset(void) {
+      _head = _tail = _sum = 0;
+    } // Queue::reset()
+    
+    
+    /* 
+     * enqueue(value) to the front of the queue
+     *
+     * silently ejects the last element if the queue is full
+     */
+    void enqueue(const T value) {
+      _queue[_tail] = value;
+      _sum += value;
+      _tail = increment(_tail);
+      if (_tail == _head) {
+        // silent discard, but track the sum
+        _sum -= _queue[_head];
+        _head = increment(_head);
+      }
+    } // enqueue(value)
+    
+    
+    /*
+     * take a value from the end of the queue
+     * 
+     * returns NULL if the queue is empty.
+     */
+    T dequeue(void) {
+      float value;
+      if (! isEmpty()) {
+        value = _queue[_head];
+        _head = increment(_head);
+    	_sum -= value;
+        return value;
+      } else {
+        return NULL;
+      }
+    } // int dequeue()
+    
+    
+    // returns true if the queue isEmpty
+    bool isEmpty(void) {
+      return _head == _tail;
+    } // boolean Queue::isEmpty()
+    
+    
+    T sum(void) {
+      return _sum;
+    } // int StaticQueue::sum()
+    
+    
+    // dumps the queue contents to Serial (or whatever Print class)
+    void dump(Print & printer) {
+      printer.print("head = "); printer.print(_head);
+      printer.print(", tail = "); printer.println(_tail);
+      if (! isEmpty()) {
+    	int i = _head;
+    	while (i != _tail) {
+          if (i >= TINYQUEUE_SIZE) {
+    		i = 0;
+    	  } // wraparound?
+    	  printer.print(i); 
+          printer.print(":");
+          printer.println(_queue[i]);  
+    	  i++;
+    	}	
+      } // not empty
+    } // StaticQueue::dump()
 
 
-// reset the Queue to "empty"
-void StaticQueue::reset(void) {
-  _head = _tail = _sum = 0;
-} // Queue::reset()
-
-
-/* 
- * enqueue(value) to the front of the queue
- *
- * silently ejects the last element if the queue is full
- */
-void StaticQueue::enqueue(const float value) {
-  _queue[_tail] = value;
-  _sum += value;
-  _tail = increment(_tail);
-  if (_tail == _head) {
-    // silent discard, but track the sum
-    _sum -= _queue[_head];
-    _head = increment(_head);
-  }
-} // enqueue(value)
-
-
-/*
- * take a value from the end of the queue
- * 
- * returns NULL if the queue is empty.
- */
-float StaticQueue::dequeue(void) {
-  float value;
-  if (! isEmpty()) {
-    value = _queue[_head];
-    _head = increment(_head);
-	_sum -= value;
-    return value;
-  } else {
-    return NULL;
-  }
-} // int dequeue()
-
-
-// returns true if the queue isEmpty
-bool StaticQueue::isEmpty(void) {
-  return _head == _tail;
-} // boolean Queue::isEmpty()
-
-
-float StaticQueue::sum(void) {
-  return _sum;
-} // int StaticQueue::sum()
-
-
-// dumps the queue contents to Serial (or whatever Print class)
-void StaticQueue::dump(Print & printer) {
-  printer.print("head = "); printer.print(_head);
-  printer.print(", tail = "); printer.println(_tail);
-  if (! isEmpty()) {
-	int i = _head;
-	while (i != _tail) {
-      if (i >= TINYQUEUE_SIZE) {
-		i = 0;
-	  } // wraparound?
-	  printer.print(i); 
-      printer.print(":");
-      printer.println(_queue[i]);  
-	  i++;
-	}	
-  } // not empty
-} // StaticQueue::dump()
-
+};
 
 #endif
 

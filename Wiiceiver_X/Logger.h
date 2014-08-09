@@ -67,7 +67,7 @@ class Logger {
   private:
     byte pin;
     int zeroOffset, logEntryBlock;
-    StaticQueue values;
+    StaticQueue <float> values;
     float current;
     unsigned long lastWritten;
     Throttle* throttle;
