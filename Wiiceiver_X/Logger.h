@@ -17,8 +17,8 @@
  *
  * http://austindavid.com/wiiceiver
  *  
- * latest software: https://github.com/jaustindavid/wiiceiver
- * schematic & parts: http://www.digikey.com/schemeit#t9g
+ * latest software & schematic: 
+ *    https://github.com/jaustindavid/wiiceiver
  *
  * Enjoy!  Be safe! 
  * 
@@ -55,7 +55,7 @@
 
 // #define DEBUGGING_LOGGER
 
-#define FAKE_AMMETER
+// #define FAKE_AMMETER
 #ifdef FAKE_AMMETER
 #define analogRead(PIN) (random(20) * (1+Chuck::getInstance()->Y)+512)
 #endif

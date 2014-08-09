@@ -17,8 +17,8 @@
  *
  * http://austindavid.com/wiiceiver
  *  
- * latest software: https://github.com/jaustindavid/wiiceiver
- * schematic & parts: http://www.digikey.com/schemeit#t9g
+ * latest software & schematic: 
+ *    https://github.com/jaustindavid/wiiceiver
  *
  * Enjoy!  Be safe! 
  * 
@@ -26,7 +26,8 @@
  * 12 May 2014
  *
  */
-
+ 
+ 
 #include <avr/wdt.h> 
 #include <Wire.h>
 #include <Servo.h>
@@ -51,6 +52,7 @@
 #include "EEPROMAnything.h"
 #include "Logger.h"
 #include "pinouts.h"
+
 
 /********
  * PATTERNS!

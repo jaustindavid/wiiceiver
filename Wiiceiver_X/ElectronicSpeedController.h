@@ -17,8 +17,8 @@
  *
  * http://austindavid.com/wiiceiver
  *  
- * latest software: https://github.com/jaustindavid/wiiceiver
- * schematic & parts: http://www.digikey.com/schemeit#t9g
+ * latest software & schematic: 
+ *    https://github.com/jaustindavid/wiiceiver
  *
  * Enjoy!  Be safe! 
  * 
@@ -26,7 +26,7 @@
  * 12 May 2014
  *
  */
-
+ 
 #ifndef ELECTRONICSPEEDCONTROLLER_H
 #define ELECTRONICSPEEDCONTROLLER_H
 
