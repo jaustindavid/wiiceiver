@@ -93,7 +93,7 @@ int pinLocation(int pinID) {
     {9,  11}, // WII_POWER   any digital pin
     {19, 19}, // WII_SCL     A5, don't change
     {18, 18}, // WII_SDA     A4, don't change
-    {0,  15}, // AMMETER     A1 (analog) 
+    {15,  15}, // AMMETER     A1 (analog) 
   };
   
   if (CSEL < 0) {

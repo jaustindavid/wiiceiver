@@ -33,6 +33,7 @@
 #define TINYQUEUE_SIZE 50
 #include "StaticQueue.h"
 #include "Throttle.h"
+#include "EEPROMAnything.h"
 
 /*
  * Attach one of these: 
@@ -41,13 +42,22 @@
  *
  * Log: top 1s A, bottom 1s A, avg A, total charge -Ah, 
  * total discharge Ah, net consumed Ah, duration (s)
+ *
+ * Theory of Operation:
+ * A rolling (circular) list of LogEntry records is stored in EEPROM
+ * at a given starting location.  A new record is written after at least
+ * 30s; at that time, the next record (possibly wrapping to 0) is 
+ * cleared by writing 255 to the first byte.
+ * 
+ * To replay the log, find the first 255, then read forward HISTORY
+ * records.
  */
 
 // #define DEBUGGING_LOGGER
 
 #define FAKE_AMMETER
 #ifdef FAKE_AMMETER
-#define analogRead(PIN) (random(20)+512)
+#define analogRead(PIN) (random(20) * (1+Chuck::getInstance()->Y)+512)
 #endif
 
 #define HISTORY 10         // save 10 previous rides
@@ -56,7 +66,7 @@
 class Logger {
   private:
     byte pin;
-    int zeroOffset, logEntryAddy;
+    int zeroOffset, logEntryBlock;
     StaticQueue values;
     float current;
     unsigned long lastWritten;
@@ -92,54 +102,106 @@ class Logger {
     void operator=(Logger const&);
 
   
-    void findUnusedAddy(void) {
-      int addy = EEPROM_LOGGER_ADDY;
-      while (addy < 1024 && EEPROM.read(addy) != 255) {
-        addy += sizeof(LogEntry);
+    // convert a block location to an EEPROM address
+    int blockToAddy(int block) {
+      return EEPROM_LOGGER_ADDY + block * sizeof(LogEntry);
+    } // int blockToAddy(block)
+  
+  
+    // returns the block 0..HISTORY for the to-be-written logEntry
+    int findUnusedBlock(void) {
+      int block = 0;    // logical "block", 0..HISTORY
+      while (block < HISTORY && EEPROM.read(blockToAddy(block)) != 255) {
+        #ifdef DEBUGGING_LOGGER
+        Serial.print("checking block #");
+        Serial.print(block);
+        Serial.print(", address ");
+        Serial.println(blockToAddy(block));
+        #endif
+        block += 1;
       }
       
-      if (addy + sizeof(LogEntry) > 1024) {
-        addy = sizeof(LogEntry);
+      return (block >= HISTORY? 0 : block);
+    } // int findUnusedBlock()
+    
+    
+    // clears the next block, if needed
+    void clearNextBlock(int block) {
+      if (++ block >= HISTORY) {
+        block = 0;
       }
       
-      Serial.print("First unused log address: ");
-      Serial.print(addy);
-      EEPROM.write(addy, 255);
-    }    
+      if (EEPROM.read(blockToAddy(block)) != 255) {
+        Serial.print("clearing block #");
+        Serial.print(block);
+        Serial.print(" at address ");
+        Serial.println(blockToAddy(block));
+        EEPROM.write(blockToAddy(block), 255);
+      }
+    } // clearNextAddy(block)
     
     
     // write recent history to EEPROM
     void saveValues(void) {
+      #ifdef DEBUGGING_LOGGER
       Serial.print("saving? millis - last = ");
       Serial.print(millis() - lastWritten);
       Serial.print("; current = ");
       Serial.print(abs(current));
       Serial.print("; throttle = ");
       Serial.println(throttle->getThrottle());
+      #endif
       if (millis() - lastWritten > WRITE_PERIOD &&
           abs(current) < 1.5 && 
-          abs(throttle->getThrottle()) < THROTTLE_MIN) {
-        Serial.println("Logger: saving!");
+          abs(Chuck::getInstance()->Y) < THROTTLE_MIN) {
+        Serial.print("Logger: saving");
+        unsigned long start = millis();
+        clearNextBlock(logEntryBlock);
+        EEPROM_writeAnything(blockToAddy(logEntryBlock), logEntry);
+        Serial.print("; done in ");
+        Serial.print(millis() - start);
+        Serial.println("ms");
         lastWritten = millis();
       }
     } // saveValues(void)
     
     
-    void showLogEntry() {
+    void showLogEntry(LogEntry entry) {
       Serial.print("peak discharge: ");
-      Serial.print(logEntry.peakDischarge);
+      Serial.print(entry.peakDischarge);
       Serial.print("A; peak regen: ");
-      Serial.print(logEntry.peakRegen);
+      Serial.print(entry.peakRegen);
       Serial.print("A; total Discharge: ");
-      Serial.print(logEntry.totalDischarge);
+      Serial.print(entry.totalDischarge);
       Serial.print("mAh; total Regen: ");
-      Serial.print(logEntry.totalRegen);
+      Serial.print(entry.totalRegen);
       Serial.print("mAh; net discharge: ");
-      Serial.print(logEntry.totalDischarge - logEntry.totalRegen);
+      Serial.print(entry.totalDischarge - entry.totalRegen);
       Serial.print("mAh in ");
-      Serial.print(logEntry.duration / 1000);
+      Serial.print(entry.duration / 1000);
       Serial.println(" seconds");
     } // showLogEntry(LogEntry logEntry)
+    
+    
+    void showLogHistory(void) {
+      LogEntry entry;
+      int b; 
+      int block = logEntryBlock;
+      
+      Serial.println("History (oldest to newest):");
+      for (b = 0; b < HISTORY; b ++) {
+        if (EEPROM_readAnything(blockToAddy(block), entry)) {
+          Serial.print("#");
+          Serial.print(block);
+          Serial.print(": ");
+          showLogEntry(entry);
+          if (++block >= HISTORY) {
+            block = 0;
+          }
+        }
+      }
+    } // showLogHistory()
+    
     
     
   public:
@@ -169,9 +231,15 @@ class Logger {
           zeroOffset = 512 - avg;
           Serial.print("Using 0A offset ");
           Serial.println(zeroOffset);
+          
+          logEntryBlock = findUnusedBlock();
+          Serial.print("This entry: block #");
+          Serial.println(logEntryBlock);
+          
+          showLogHistory();
         }
       }
-    }
+    } // init(pin)
 
 
     void update(void) {
@@ -222,7 +290,7 @@ class Logger {
       logEntry.duration = millis();
       
       if (++updateCounter % 20 == 0) {
-        showLogEntry();
+        showLogEntry(logEntry);
         updateCounter = 0;
       }
       
