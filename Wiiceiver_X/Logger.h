@@ -40,6 +40,9 @@
  *   http://www.panucatt.com/Current_Sensor_for_Arduino_p/cs-100a.htm
  * to GND, 5V, A1.
  *
+ * If an ammeter is not detected, this code does nothing
+ *   that is, it works on a "normal" wiiceiver.
+ *
  * Log: top 1s A, bottom 1s A, avg A, total charge -Ah, 
  * total discharge Ah, net consumed Ah, duration (s)
  *
@@ -55,12 +58,14 @@
 
 // #define DEBUGGING_LOGGER
 
+// for bench testing, the FAKE_AMMETER will inject random data influenced by 
+// throttle position.
 // #define FAKE_AMMETER
 #ifdef FAKE_AMMETER
 #define analogRead(PIN) (random(20) * (1+Chuck::getInstance()->Y)+512)
 #endif
 
-#define HISTORY 10         // save 10 previous rides
+#define HISTORY 50         // save 50 previous rides (~upper limit at 1024 bytes EEPROM)
 #define WRITE_PERIOD 30000 // 30s
 
 class Logger {
@@ -132,9 +137,9 @@ class Logger {
       }
       
       if (EEPROM.read(blockToAddy(block)) != 255) {
-        Serial.print("clearing block #");
+        Serial.print(" clearing block #");
         Serial.print(block);
-        Serial.print(" at address ");
+        Serial.print(" at address ...");
         Serial.println(blockToAddy(block));
         EEPROM.write(blockToAddy(block), 255);
       }
@@ -154,7 +159,7 @@ class Logger {
       if (millis() - lastWritten > WRITE_PERIOD &&
           abs(current) < 1.5 && 
           abs(Chuck::getInstance()->Y) < THROTTLE_MIN) {
-        Serial.print("Logger: saving");
+        Serial.print("Logger: saving ...");
         unsigned long start = millis();
         clearNextBlock(logEntryBlock);
         EEPROM_writeAnything(blockToAddy(logEntryBlock), logEntry);

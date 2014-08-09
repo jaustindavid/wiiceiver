@@ -58,8 +58,8 @@ class StaticQueue {
     
   private:
     int _head, _tail;
-    float _sum;
-    float _queue[TINYQUEUE_SIZE + 1]; 
+    T _sum;
+    T _queue[TINYQUEUE_SIZE + 1]; 
 
 
     // helper function --- increment an index, wrap if needed
@@ -110,7 +110,7 @@ class StaticQueue {
      * returns NULL if the queue is empty.
      */
     T dequeue(void) {
-      float value;
+      T value;
       if (! isEmpty()) {
         value = _queue[_head];
         _head = increment(_head);
