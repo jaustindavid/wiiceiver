@@ -21,10 +21,12 @@ Wiiceiver also implements a few additional functions:
   cruise.  While holding C, pressing the joystick "up" will
   increase speed gently, "down" will decrease speed.  
   Releasing C returns to neutral.
-- Control smoothing: Wiiceiver implemenets an exponential 
-  algorithm to smooth the controller input.  As currently
-  tuned, an instant 0-100% throttle input will result in a
-  gradual change to the ESC over the course of about 1s.
+- Control smoothing: Wiiceiver implemenets a "floating ceiling"
+  algorithm to smooth the controller input.  By default an
+  instant 0-100% throttle input (stick all the way forward from
+  neutral) will result in a gradual change to the ESC over the
+  course of about 10s.  Z+stick provides "raw" input (no
+  smoothing)
 
 It has been tested to work with a corded Nintendo nunchuck, a 
 Memorex wireless nunchuck, and a Nyko Kama wireless nunchuck.
