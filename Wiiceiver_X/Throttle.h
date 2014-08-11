@@ -39,7 +39,7 @@
  * Manages the throttle input; presents a smoothed output, [ -1 .. 1 ]
  */
 
-// #define DEBUGGING_THROTTLE
+#define DEBUGGING_THROTTLE
 #define THROTTLE_MIN 0.05                      // the lowest throttle to send the ESC
 #define THROTTLE_CC_BUMP 0.003                 // CC = 0.2% throttle increase; 50/s = 10s to hit 100% on cruise
 #define THROTTLE_Z_BUMP (THROTTLE_CC_BUMP * 2) // Z button == 2x CC bump 
@@ -184,8 +184,8 @@ class Throttle {
       }
       
       // any joystick input kills cruise resume
-      if (abs(chuck->X) > THROTTLE_MIN ||
-          abs(chuck->Y) > THROTTLE_MIN) {
+      if (abs(chuck->X) > 0.1 ||
+          abs(chuck->Y) > 0.1) {
         #ifdef DEBUGGING_THROTTLE_CCR
         Serial.print("stick");
         #endif
