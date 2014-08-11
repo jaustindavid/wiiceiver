@@ -33,7 +33,7 @@
 #include <Servo.h>
 #include <EEPROM.h>
 
-#define WIICEIVER_VERSION "1.1 alpha-experimental"
+#define WIICEIVER_VERSION "1.2 experimental"
 
 // addys for vars stored in EEPROM
 #define EEPROM_Y_ADDY            0
