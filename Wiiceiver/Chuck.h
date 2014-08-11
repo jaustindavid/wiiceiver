@@ -17,8 +17,8 @@
  *
  * http://austindavid.com/wiiceiver
  *  
- * latest software: https://github.com/jaustindavid/wiiceiver
- * schematic & parts: http://www.digikey.com/schemeit#t9g
+ * latest software & schematic: 
+ *    https://github.com/jaustindavid/wiiceiver
  *
  * Enjoy!  Be safe! 
  * 
@@ -58,6 +58,12 @@
  * keeping memory down for the ATtiny series.
  *
  */
+
+ 
+// #define DEBUGGING_CHUCK
+// #define DEBUGGING_CHUCK_ACTIVITY
+#define WII_ACTIVITY_COUNTER 100  // once per 20ms; 50 per second
+ 
 class Chuck {
 #ifndef WII_ACTIVITY_COUNTER
 #define WII_ACTIVITY_COUNTER 250  // consecutive static reads & it's considered inactive
@@ -66,9 +72,10 @@ class Chuck {
 #define DEFAULT_X_ZERO 128
 
 private:
+  int activitySamenessCount;
   byte status[6], lastStatus[6];
   byte Y0, Ymin, Ymax, X0, Xmin, Xmax;
-  word lastActivity, activitySamenessCount;
+  
 public:
   float X, Y;
   bool C, Z;
@@ -167,6 +174,8 @@ private:
     for (int i = 0; i < 5; i++) {
       Serial.print(" [");
       Serial.print(status[i], DEC);
+      Serial.print(",");
+      Serial.print(lastStatus[i], DEC);
       Serial.print("]");
     }
     Serial.print("; sameness ");
@@ -178,7 +187,28 @@ private:
   } // _computeStatus(void)
 
 
+/********
+ * PATTERNS!
+ * http://www.codeproject.com/Articles/721796/Design-patterns-in-action-with-Arduino
+ ********/
+ 
+  // PRIVATE constructor
+  Chuck(void) {
+  } // constructor
+  
+  
+  Chuck(Chuck const&);
+  void operator=(Chuck const&);
+
+
 public:
+
+  // returns the Singleton instance
+  static Chuck* getInstance(void) {
+    static Chuck chuck;   // NB: I don't like this idiom
+    return &chuck;
+  } // Chuck* getInstance()
+  
 
   void readEEPROM() {
     byte storedY;

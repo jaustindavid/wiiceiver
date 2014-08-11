@@ -17,8 +17,8 @@
  *
  * http://austindavid.com/wiiceiver
  *  
- * latest software: https://github.com/jaustindavid/wiiceiver
- * schematic & parts: http://www.digikey.com/schemeit#t9g
+ * latest software & schematic: 
+ *    https://github.com/jaustindavid/wiiceiver
  *
  * Enjoy!  Be safe! 
  * 
@@ -26,13 +26,15 @@
  * 12 May 2014
  *
  */
-
+ 
 #ifndef ELECTRONICSPEEDCONTROLLER_H
 #define ELECTRONICSPEEDCONTROLLER_H
 
 /*
- *    ESC wrapper class
+ *    ESC wrapper class: Singleton!
  */
+
+// #define DEBUGGING_ESC
 
 class ElectronicSpeedController {
 #define ESC_CENTER 90       // angle of the "center"; probably always 90
@@ -44,7 +46,28 @@ private:
   int microseconds;         // the time (ms) most recently written
   unsigned long lastWrite;  // time in millis() when it was last written
 
+
+/********
+ * PATTERNS!
+ * http://www.codeproject.com/Articles/721796/Design-patterns-in-action-with-Arduino
+ ********/
+
+    // PRIVATE constructor
+    ElectronicSpeedController(void) {
+    } // constructor
+    
+    ElectronicSpeedController(ElectronicSpeedController const&);
+    void operator=(ElectronicSpeedController const&);
+
+
 public:
+
+  // returns the Singleton instance
+  static ElectronicSpeedController* getInstance(void) {
+    static ElectronicSpeedController esc;    // NB: I don't like this idiom
+    return &esc;
+  }
+
 
 void init(int pin) {
   angle = -1;

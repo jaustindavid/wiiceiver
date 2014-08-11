@@ -172,7 +172,7 @@ class Throttle {
       }
       
       if (! chuck->C && previousC) {
-        previousCruiseLevel = getThrottle();
+        previousCruiseLevel = max(autoCruise, getThrottle());
         previousCruiseMS = millis();
         newThrottle = 0.0;
         #ifdef DEBUGGING_THROTTLE_CCR

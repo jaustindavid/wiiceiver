@@ -17,8 +17,8 @@
  *
  * http://austindavid.com/wiiceiver
  *  
- * latest software: https://github.com/jaustindavid/wiiceiver
- * schematic & parts: http://www.digikey.com/schemeit#t9g
+ * latest software & schematic: 
+ *    https://github.com/jaustindavid/wiiceiver
  *
  * Enjoy!  Be safe! 
  * 
@@ -34,6 +34,13 @@
  * A helper class -- smooths the throttle input
  * 
  */
+
+// #define DEBUGGING_SMOOTHER
+#define SMOOTHER_MIN_STEP 0.003           // minimum change for smoothing; 0.003 for ~1s, 0.001 for ~2s
+#define SMOOTHER_BRAKES_PROGRAM 0
+#define SMOOTHER_THROTTLE_PROGRAM 1
+#define SMOOTHER_THROTTLE_Z_PROGRAM 2
+#define SMOOTHER_CRUISE_RESUME_PROGRAM 3
 
 class Smoother {
   private:

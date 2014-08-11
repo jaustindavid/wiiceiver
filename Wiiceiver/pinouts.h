@@ -17,8 +17,8 @@
  *
  * http://austindavid.com/wiiceiver
  *  
- * latest software: https://github.com/jaustindavid/wiiceiver
- * schematic & parts: http://www.digikey.com/schemeit#t9g
+ * latest software & schematic: 
+ *    https://github.com/jaustindavid/wiiceiver
  *
  * Enjoy!  Be safe! 
  * 
@@ -56,6 +56,10 @@
 #define WII_SCL_ID   4
 #define WII_SDA_ID   5
 
+#define AMMETER_ID   6
+
+
+// #define DEBUGGING_PINS
 
  
 int CSEL = -1;
@@ -64,7 +68,7 @@ void chipSelect (void) {
   if (digitalRead(13) == HIGH) {
     CSEL = 0;
   } else {
-    // future: perform analogRead on pin 23
+    // future: perform analogRead on A0
     CSEL = 1;
   }
   
@@ -81,7 +85,7 @@ void chipSelect (void) {
  * columns = version; first column = v0, second = v1, etc
  */
 int pinLocation(int pinID) {
-  int pinMap[6][2] = {
+  int pinMap[7][2] = {
   // v1, v2
     {8,   8}, // RED_LED     any digital pin
     {7,   6}, // GREEN_LED   any digital pin
@@ -89,6 +93,7 @@ int pinLocation(int pinID) {
     {9,  11}, // WII_POWER   any digital pin
     {19, 19}, // WII_SCL     A5, don't change
     {18, 18}, // WII_SDA     A4, don't change
+    {15, 15}, // AMMETER     A1 (analog) 
   };
   
   if (CSEL < 0) {
