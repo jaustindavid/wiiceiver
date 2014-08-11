@@ -252,9 +252,10 @@ class Throttle {
 
    
   public:
-    
+  
+    // returns the Singleton instance
     static Throttle* getInstance(void) {
-      static Throttle throttle;
+      static Throttle throttle;   // NB: I don't like this idiom
       return &throttle;
     } // Throttle* getInstance()
     

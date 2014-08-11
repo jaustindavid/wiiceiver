@@ -203,8 +203,9 @@ private:
 
 public:
 
+  // returns the Singleton instance
   static Chuck* getInstance(void) {
-    static Chuck chuck;
+    static Chuck chuck;   // NB: I don't like this idiom
     return &chuck;
   } // Chuck* getInstance()
   

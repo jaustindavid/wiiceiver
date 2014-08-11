@@ -50,7 +50,9 @@
  * A rolling (circular) list of LogEntry records is stored in EEPROM
  * at a given starting location.  A new record is written after at least
  * 30s; at that time, the next record (possibly wrapping to 0) is 
- * cleared by writing 255 to the first byte.
+ * cleared by writing 255 to the first byte.  This new record is rewritten
+ * every ~30s until power off.  Subsequent startups writes to the next
+ * record (first with 255).
  * 
  * To replay the log, find the first 255, then read forward HISTORY
  * records.
@@ -59,7 +61,7 @@
 // #define DEBUGGING_LOGGER
 
 // for bench testing, the FAKE_AMMETER will inject random data influenced by 
-// throttle position.
+// chuck Y position.
 // #define FAKE_AMMETER
 #ifdef FAKE_AMMETER
 #define analogRead(PIN) (random(20) * (1+Chuck::getInstance()->Y)+512)
@@ -113,9 +115,9 @@ class Logger {
     } // int blockToAddy(block)
   
   
-    // returns the block 0..HISTORY for the to-be-written logEntry
+    // returns the block 0..HISTORY-1 for the to-be-written logEntry
     int findUnusedBlock(void) {
-      int block = 0;    // logical "block", 0..HISTORY
+      int block = 0;    // logical "block", 0..HISTORY-1
       while (block < HISTORY && EEPROM.read(blockToAddy(block)) != 255) {
         #ifdef DEBUGGING_LOGGER
         Serial.print("checking block #");
@@ -126,7 +128,10 @@ class Logger {
         block += 1;
       }
       
-      return (block >= HISTORY? 0 : block);
+      if (block >= HISTORY) {
+        block = 0;
+      }
+      return block;
     } // int findUnusedBlock()
     
     
@@ -171,6 +176,7 @@ class Logger {
     } // saveValues(void)
     
     
+    // prints a single LogEntry record
     void showLogEntry(LogEntry entry) {
       Serial.print("peak discharge: ");
       Serial.print(entry.peakDischarge);
@@ -188,6 +194,7 @@ class Logger {
     } // showLogEntry(LogEntry logEntry)
     
     
+    // displays the history in the log (EEPROM)
     void showLogHistory(void) {
       LogEntry entry;
       int b; 
@@ -195,14 +202,15 @@ class Logger {
       
       Serial.println("History (oldest to newest):");
       for (b = 0; b < HISTORY; b ++) {
-        if (EEPROM_readAnything(blockToAddy(block), entry)) {
+        if (EEPROM.read(blockToAddy(block)) != 255 &&
+            EEPROM_readAnything(blockToAddy(block), entry)) {
           Serial.print("#");
           Serial.print(block);
           Serial.print(": ");
           showLogEntry(entry);
-          if (++block >= HISTORY) {
-            block = 0;
-          }
+        }
+        if (++block >= HISTORY) {
+          block = 0;
         }
       }
     } // showLogHistory()
@@ -212,8 +220,9 @@ class Logger {
   public:
   
     
+    // returns the Singleton instance
     static Logger* getInstance(void) {
-      static Logger logger;
+      static Logger logger;    // NB: I don't like this idiom
       return &logger;
     } // static Logger* getInstance()
 

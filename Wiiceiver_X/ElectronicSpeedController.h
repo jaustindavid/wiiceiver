@@ -62,9 +62,9 @@ private:
 
 public:
 
-
+  // returns the Singleton instance
   static ElectronicSpeedController* getInstance(void) {
-    static ElectronicSpeedController esc;
+    static ElectronicSpeedController esc;    // NB: I don't like this idiom
     return &esc;
   }
 
