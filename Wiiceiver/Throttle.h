@@ -41,11 +41,13 @@
 
 #define DEBUGGING_THROTTLE
 #define THROTTLE_MIN 0.05                      // the lowest throttle to send the ESC
+#define THROTTLE_MIN_CC 0.25                   // the minimum stick input considered during cruise
 #define THROTTLE_CC_BUMP 0.003                 // CC = 0.2% throttle increase; 50/s = 10s to hit 100% on cruise
 #define THROTTLE_Z_BUMP (THROTTLE_CC_BUMP * 2) // Z button == 2x CC bump 
 #define THROTTLE_MIN_CC 0.05                   // minimum / inital speed for cruise crontrol
                                                // note that a different value may be stored in EEPROM
 #define THROTTLE_CRUISE_RETURN_MS 5000         // time (ms) when re-grabbing cruise will use the previous CC level
+
 
 
 class Throttle {
@@ -103,7 +105,7 @@ class Throttle {
       }
       if (millis() < 120 * 1000 &&
           chuck->Z &&
-          abs(chuck->Y) < 0.25 && 
+          abs(chuck->Y) < THROTTLE_MIN_CC && 
           abs(chuck->X) > 0.75) {
         ++xCounter;
         #ifdef DEBUGGING_THROTTLE_CAC
@@ -184,8 +186,8 @@ class Throttle {
       }
       
       // any joystick input kills cruise resume
-      if (abs(chuck->X) > 0.1 ||
-          abs(chuck->Y) > 0.1) {
+      if (abs(chuck->X) > THROTTLE_MIN_CC ||
+          abs(chuck->Y) > THROTTLE_MIN_CC) {
         #ifdef DEBUGGING_THROTTLE_CCR
         Serial.print("stick");
         #endif
@@ -219,11 +221,11 @@ class Throttle {
         // we're looking for autoCruise, so do that;
         // don't change the throttle position, just
         // return throttle; fallthrough is OK
-      } else if (chuck->Y > 0.25) {                                   // accel?
+      } else if (chuck->Y > THROTTLE_MIN_CC) {                                   // accel?
         // speed up, but not past 1.0 (full blast)
         throttle += chuck->Y * THROTTLE_CC_BUMP;
         throttle = min(throttle, 1.0);
-      } else if (chuck->Y < -0.25) {                                  // decel?
+      } else if (chuck->Y < -THROTTLE_MIN_CC) {                                  // decel?
         throttle += chuck->Y * THROTTLE_CC_BUMP;
         throttle = max(throttle, 0.0);
       } else if (throttle < autoCruise) {                            // auto cruise?
