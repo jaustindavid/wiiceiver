@@ -342,8 +342,18 @@ public:
     return logEntry.totalRegen;
   }
 
+
   float getNetDischarge(void) {
     return logEntry.totalDischarge - logEntry.totalRegen;
+  }
+
+
+  float getPeakDischarge(void) {
+    return logEntry.peakDischarge;
+  }
+  
+  float getPeakRegen(void) {
+    return logEntry.peakRegen;
   }
 
 

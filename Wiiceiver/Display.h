@@ -66,6 +66,39 @@ class Display {
   
   Display(Display const&);
   void operator=(Display const&);
+  
+  void justify(byte width, float value, byte decimals) {
+    // total = log10(value) + 1 + decimals
+    byte spaces = 1;
+    float working = value;
+    if (working < 0) {
+      working = working * -1;
+      spaces += 1;
+    }
+    while (working >= 10) {
+      ++spaces;
+      working = working / 10;
+    }
+
+    if (decimals) {
+      spaces += 1 + decimals;
+    }
+
+    
+    if (spaces > width) {
+      decimals = max(0, decimals - (spaces - width));
+
+      if (decimals == 0) {
+        spaces -= 3;
+      }
+    }
+    
+    for (; spaces < width; spaces ++) {
+      adafruitDisplay->print(F(" "));        
+    }
+    adafruitDisplay->print(value, decimals);
+  } // justify(width, value, decimals)
+
 
   public:
   
@@ -90,10 +123,11 @@ class Display {
 
     void splashScreen(void) {
       adafruitDisplay->clearDisplay();
-      adafruitDisplay->setTextSize(1);
       adafruitDisplay->setTextColor(WHITE);
       adafruitDisplay->setCursor(0,0);
-      adafruitDisplay->println(F("Wiiceiver!"));
+      adafruitDisplay->setTextSize(2);
+      adafruitDisplay->print(F("Wiiceiver!"));
+      adafruitDisplay->setTextSize(1);
       adafruitDisplay->println(F(WIICEIVER_VERSION));
       adafruitDisplay->print(F("Watchdog resets: "));
       adafruitDisplay->println((byte)(EEPROM.read(EEPROM_WDC_ADDY) + 1));
@@ -113,13 +147,17 @@ class Display {
       if (! timer.isExpired()) {  
         adafruitDisplay->setTextSize(2);
         adafruitDisplay->println(F("Current"));
-        adafruitDisplay->print(logger->getCurrent());
+        justify(5, logger->getCurrent(), 2);
         adafruitDisplay->println(F("A"));
       } else {
         adafruitDisplay->setTextSize(1);
-        adafruitDisplay->println(F("Current, A"));        
+        adafruitDisplay->print(F("Current: "));
+        adafruitDisplay->print(logger->getPeakRegen(), 1);
+        adafruitDisplay->print(F(", "));
+        adafruitDisplay->println(logger->getPeakDischarge(), 1);
         adafruitDisplay->setTextSize(3);
-        adafruitDisplay->print(logger->getCurrent());
+        justify(5, logger->getCurrent(), 2);
+        adafruitDisplay->print(F("A"));
       }
       adafruitDisplay->display();
     }
@@ -137,19 +175,26 @@ class Display {
       if (! timer.isExpired()) {
         adafruitDisplay->setTextSize(2);
         adafruitDisplay->println(F("DISCHARGE"));
-        adafruitDisplay->print(logger->getNetDischarge());
+        justify(5, logger->getNetDischarge(), 1);
         adafruitDisplay->println(F("mAh"));
       } else {
         adafruitDisplay->setTextSize(1);
-        adafruitDisplay->println(F("DISCHARGE, mAh"));
+        adafruitDisplay->print(F("Peak Discharge: "));
+        adafruitDisplay->print(logger->getPeakDischarge(), 1);
+        adafruitDisplay->println(F("A"));
         adafruitDisplay->setTextSize(3);
-        adafruitDisplay->print(logger->getNetDischarge());
+        justify(5, logger->getNetDischarge(), 1);
+        adafruitDisplay->setTextSize(2);
+        adafruitDisplay->println(F("mAh"));
       }
       adafruitDisplay->display();
     }
 
 
+    
+
     void printRegen(void) {
+      char buf[5];
       if (screen != prevScreen) {
         Serial.println(F("screen: REGEN"));
         timer.reset();
@@ -161,16 +206,20 @@ class Display {
       if (! timer.isExpired()) {
         adafruitDisplay->setTextSize(2);
         adafruitDisplay->println(F("REGEN"));
-        adafruitDisplay->print(logger->getRegen());
+        justify(5, logger->getRegen(), 1);
         adafruitDisplay->println(F("mAh"));
       } else {
         adafruitDisplay->setTextSize(1);
-        adafruitDisplay->println(F("REGEN, mAh"));
+        adafruitDisplay->print(F("Peak Regen: "));
+        adafruitDisplay->print(logger->getPeakRegen(), 1);
+        adafruitDisplay->println(F("A"));
         adafruitDisplay->setTextSize(3);
-        adafruitDisplay->print(logger->getRegen());
+        justify(5, logger->getRegen(), 1);
+        adafruitDisplay->setTextSize(2);
+        adafruitDisplay->println(F("mAh"));
       }
       adafruitDisplay->display();
-    }
+    } // printRegen()
 
 
     void printHistory(void) {
@@ -203,7 +252,7 @@ class Display {
         }
       }
       adafruitDisplay->display();
-    }
+    } // printHistory()
     
     
     void printStatus() {
@@ -225,11 +274,11 @@ class Display {
       }
       if (throttle->getThrottle() > 0) {
         adafruitDisplay->print(F("Gas: "));
-        adafruitDisplay->print((int)(throttle->getThrottle() * 100));
+        adafruitDisplay->print(throttle->getThrottle() * 100, 0);
         adafruitDisplay->println(F("%"));    
       } else if (throttle->getThrottle() < 0) {
         adafruitDisplay->print(F("Brake:"));
-        adafruitDisplay->print((int)(throttle->getThrottle() * -100));    
+        adafruitDisplay->print(throttle->getThrottle() * -100, 0);    
         adafruitDisplay->println(F("%"));    
       } else {
         adafruitDisplay->println(F("Neutral"));
@@ -263,6 +312,7 @@ class Display {
           abs(chuck->Y) < 0.25) {
         if (screen == DISP_MESSAGE) {
           screen = prevScreen;
+          timer.reset();
         } else {
           screen = (screen + 1) % DISP_NUMSCREENS;
         }
