@@ -75,7 +75,7 @@ private:
   byte pin;
   int zeroOffset, logEntryBlock;
   StaticQueue <float> values;
-  float current, history[4];
+  float current, history[3];
   unsigned long lastWritten;
   Throttle* throttle;
 
@@ -219,7 +219,7 @@ private:
   void buildHistory(void) {
     LogEntry entry;
     byte block = logEntryBlock;
-    for (byte b = 1; b < 4; b++) {
+    for (byte b = 0; b < 3; b++) {
       if (--block < 0) {
         block = HISTORY;
       }
@@ -351,8 +351,13 @@ public:
     return current;
   }
 
+  // n = 0, returns current
+  // n = 1..3 returns one of the previous 3 rides
   float getNthRec(byte n) {
-    return history[n];
+    if (n == 0) {
+      return getNetDischarge();
+    } 
+    return history[n-1];
   }
 
 }; // class Logger

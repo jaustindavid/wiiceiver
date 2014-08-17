@@ -195,7 +195,7 @@ class Display {
       } else {
         adafruitDisplay->setTextSize(1);
         adafruitDisplay->println(F("HISTORY, mAh"));
-        for (int i = 3; i > 0; i--) {
+        for (int i = 2; i >= 0; i--) {
           adafruitDisplay->print(i);
           adafruitDisplay->print(F(": "));
           adafruitDisplay->print(logger->getNthRec(i));
@@ -244,6 +244,10 @@ class Display {
     
     void printMessage(char buffer[]) {
       Serial.println(F("screen: MESSAGE"));
+      if ((screen != DISP_MESSAGE) && 
+          (prevScreen != DISP_MESSAGE)) {
+        prevScreen = screen;
+      }
       screen = DISP_MESSAGE;
       adafruitDisplay->clearDisplay();
       adafruitDisplay->setTextColor(WHITE);
@@ -251,14 +255,17 @@ class Display {
       adafruitDisplay->setTextSize(2);
       adafruitDisplay->println(buffer);
       adafruitDisplay->display();
-
-    }
+    } // printMessage(buffer)
     
     
     void update(void) {
       if (chuck->Z && ! chuck->zPrev &&
           abs(chuck->Y) < 0.25) {
-        screen = (screen + 1) % DISP_NUMSCREENS;
+        if (screen == DISP_MESSAGE) {
+          screen = prevScreen;
+        } else {
+          screen = (screen + 1) % DISP_NUMSCREENS;
+        }
       }
 
       if (++updateCtr < UPDATE_RATE) {
@@ -292,7 +299,9 @@ class Display {
         default: 
             printStatus();
       }
-      prevScreen = screen;
+      if (screen != DISP_MESSAGE) {
+        prevScreen = screen;
+      }
       Serial.print(F("Display latency: "));
       Serial.print(millis() - startMS);
       Serial.println(F("ms"));
