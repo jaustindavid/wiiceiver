@@ -44,19 +44,20 @@
  * don't change these ever; see "pinLocation" below for
  * actual locations
  */
-#define RED_LED_ID   0
-#define GREEN_LED_ID 1
+#define RED_LED_ID      0
+#define GREEN_LED_ID    1
 
-#define ESC_PPM_ID   2
-#define ESC_GROUND 00     // hard-wired
+#define ESC_PPM_ID      2
+#define ESC_GROUND     00     // hard-wired
 
-#define WII_POWER_ID 3
-#define WII_GROUND 00     // hard-wired
+#define WII_POWER_ID    3
+#define WII_GROUND     00     // hard-wired
 
-#define WII_SCL_ID   4
-#define WII_SDA_ID   5
+#define WII_SCL_ID      4
+#define WII_SDA_ID      5
 
-#define AMMETER_ID   6
+#define AMMETER_ID      6
+#define OLED_RESET_ID   7
 
 
 // #define DEBUGGING_PINS
@@ -73,7 +74,7 @@ void chipSelect (void) {
   }
   
 #ifdef DEBUGGING_PINS
-    Serial.print("Smells like v");
+    Serial.print(F("Smells like v"));
     Serial.println(CSEL);
 #endif
 }
@@ -85,7 +86,7 @@ void chipSelect (void) {
  * columns = version; first column = v0, second = v1, etc
  */
 int pinLocation(int pinID) {
-  int pinMap[7][2] = {
+  PROGMEM int pinMap[8][2] = {
   // v1, v2
     {8,   8}, // RED_LED     any digital pin
     {7,   6}, // GREEN_LED   any digital pin
@@ -94,6 +95,7 @@ int pinLocation(int pinID) {
     {19, 19}, // WII_SCL     A5, don't change
     {18, 18}, // WII_SDA     A4, don't change
     {15, 15}, // AMMETER     A1 (analog) 
+    {4,   4}  // OLED_RESET  any digital pin
   };
   
   if (CSEL < 0) {
@@ -102,11 +104,11 @@ int pinLocation(int pinID) {
   
   int pin = pinMap[pinID][CSEL];
 #ifdef DEBUGGING_PINS
-  Serial.print("pin location: [");
+  Serial.print(F("pin location: ["));
   Serial.print(pinID);
-  Serial.print("][");
+  Serial.print(F("]["));
   Serial.print(CSEL);
-  Serial.print("] == ");
+  Serial.print(F("] == "));
   Serial.println(pin);
 #endif
   return pin;

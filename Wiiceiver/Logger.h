@@ -30,7 +30,7 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
-#define TINYQUEUE_SIZE 50
+#define TINYQUEUE_SIZE 25
 #include "StaticQueue.h"
 #include "Throttle.h"
 #include "EEPROMAnything.h"
@@ -62,7 +62,7 @@
 
 // for bench testing, the FAKE_AMMETER will inject random data influenced by 
 // chuck Y position.
-// #define FAKE_AMMETER
+#define FAKE_AMMETER
 #ifdef FAKE_AMMETER
 #define analogRead(PIN) (random(20) * (1+Chuck::getInstance()->Y)+512)
 #endif
@@ -71,246 +71,291 @@
 #define WRITE_PERIOD 30000 // 30s
 
 class Logger {
-  private:
-    byte pin;
-    int zeroOffset, logEntryBlock;
-    StaticQueue <float> values;
-    float current;
-    unsigned long lastWritten;
-    Throttle* throttle;
-    
-    struct logEntryStruct {
-      float peakDischarge;
-      float peakRegen;
-      float totalDischarge;
-      float totalRegen;
-      // net == discharge - regen
-      unsigned long duration;
-    }; 
-    
-    typedef struct logEntryStruct LogEntry;
-    
-    LogEntry logEntry;
-    
-    
-/********
- * PATTERNS!
- * http://www.codeproject.com/Articles/721796/Design-patterns-in-action-with-Arduino
- ********/
+private:
+  byte pin;
+  int zeroOffset, logEntryBlock;
+  StaticQueue <float> values;
+  float current, history[4];
+  unsigned long lastWritten;
+  Throttle* throttle;
 
-    // PRIVATE constructor
-    Logger(void) {
-      pin = lastWritten = 0;
-      throttle = Throttle::getInstance();
-    } // constructor
-    
-    
-    Logger(Logger const&);
-    void operator=(Logger const&);
+  struct logEntryStruct {
+    float peakDischarge;
+    float peakRegen;
+    float totalDischarge;
+    float totalRegen;
+    // net == discharge - regen
+    unsigned long duration;
+  }; 
 
-  
-    // convert a block location to an EEPROM address
-    int blockToAddy(int block) {
-      return EEPROM_LOGGER_ADDY + block * sizeof(LogEntry);
-    } // int blockToAddy(block)
-  
-  
-    // returns the block 0..HISTORY-1 for the to-be-written logEntry
-    int findUnusedBlock(void) {
-      int block = 0;    // logical "block", 0..HISTORY-1
-      while (block < HISTORY && EEPROM.read(blockToAddy(block)) != 255) {
-        #ifdef DEBUGGING_LOGGER
-        Serial.print("checking block #");
-        Serial.print(block);
-        Serial.print(", address ");
-        Serial.println(blockToAddy(block));
-        #endif
-        block += 1;
-      }
-      
-      if (block >= HISTORY) {
-        block = 0;
-      }
-      return block;
-    } // int findUnusedBlock()
-    
-    
-    // clears the next block, if needed
-    void clearNextBlock(int block) {
-      if (++ block >= HISTORY) {
-        block = 0;
-      }
-      
-      if (EEPROM.read(blockToAddy(block)) != 255) {
-        Serial.print(" clearing block #");
-        Serial.print(block);
-        Serial.print(" at address ...");
-        Serial.println(blockToAddy(block));
-        EEPROM.write(blockToAddy(block), 255);
-      }
-    } // clearNextAddy(block)
-    
-    
-    // write recent history to EEPROM
-    void saveValues(void) {
-      #ifdef DEBUGGING_LOGGER
-      Serial.print("saving? millis - last = ");
-      Serial.print(millis() - lastWritten);
-      Serial.print("; current = ");
-      Serial.print(abs(current));
-      Serial.print("; throttle = ");
-      Serial.println(throttle->getThrottle());
-      #endif
-      if (millis() - lastWritten > WRITE_PERIOD &&
-          abs(current) < 1.5 && 
-          abs(Chuck::getInstance()->Y) < THROTTLE_MIN) {
-        Serial.print("Logger: saving ...");
-        unsigned long start = millis();
-        clearNextBlock(logEntryBlock);
-        EEPROM_writeAnything(blockToAddy(logEntryBlock), logEntry);
-        Serial.print("; done in ");
-        Serial.print(millis() - start);
-        Serial.println("ms");
-        lastWritten = millis();
-      }
-    } // saveValues(void)
-    
-    
-    // prints a single LogEntry record
-    void showLogEntry(LogEntry entry) {
-      Serial.print("peak discharge: ");
-      Serial.print(entry.peakDischarge);
-      Serial.print("A; peak regen: ");
-      Serial.print(entry.peakRegen);
-      Serial.print("A; total Discharge: ");
-      Serial.print(entry.totalDischarge);
-      Serial.print("mAh; total Regen: ");
-      Serial.print(entry.totalRegen);
-      Serial.print("mAh; net discharge: ");
-      Serial.print(entry.totalDischarge - entry.totalRegen);
-      Serial.print("mAh in ");
-      Serial.print(entry.duration / 1000);
-      Serial.println(" seconds");
-    } // showLogEntry(LogEntry logEntry)
-    
-    
-    // displays the history in the log (EEPROM)
-    void showLogHistory(void) {
-      LogEntry entry;
-      int b; 
-      int block = logEntryBlock;
-      
-      Serial.println("History (oldest to newest):");
-      for (b = 0; b < HISTORY; b ++) {
-        if (EEPROM.read(blockToAddy(block)) != 255 &&
-            EEPROM_readAnything(blockToAddy(block), entry)) {
-          Serial.print("#");
-          Serial.print(block);
-          Serial.print(": ");
-          showLogEntry(entry);
-        }
-        if (++block >= HISTORY) {
-          block = 0;
-        }
-      }
-    } // showLogHistory()
-    
-    
-    
-  public:
-  
-    
-    // returns the Singleton instance
-    static Logger* getInstance(void) {
-      static Logger logger;    // NB: I don't like this idiom
-      return &logger;
-    } // static Logger* getInstance()
+  typedef struct logEntryStruct LogEntry;
+
+  LogEntry logEntry;
 
 
-    void init(int newPin) {
-      pin = newPin;
-      if (pin) {
-        pinMode(pin, INPUT_PULLUP);
-        int value = analogRead(pin);
-        if (value >= 1000) {
-          Serial.println("No ammeter detected; disabling logging");
-          pin = 0;
-        } else {
-          pinMode(pin, INPUT);
-          int sum = 0;
-          for (int i = 0; i < 50; i++) {
-            sum += analogRead(pin);
-          }
-          int avg = sum / 50;
-          zeroOffset = 512 - avg;
-          Serial.print("Using 0A offset ");
-          Serial.println(zeroOffset);
-          
-          logEntryBlock = findUnusedBlock();
-          Serial.print("This entry: block #");
-          Serial.println(logEntryBlock);
-          
-          showLogHistory();
-        }
-      }
-    } // init(pin)
+  /********
+   * PATTERNS!
+   * http://www.codeproject.com/Articles/721796/Design-patterns-in-action-with-Arduino
+   ********/
+
+  // PRIVATE constructor
+  Logger(void) {
+    pin = lastWritten = 0;
+    throttle = Throttle::getInstance();
+  } // constructor
 
 
-    void update(void) {
-      static int updateCounter = 0;
-      if (! pin) return;
-      
-      int value = analogRead(pin);
-      #ifdef DEBUGGING_LOGGER
-      Serial.print("Ammeter value: ");
-      Serial.print(value);
-      #endif
-      
-      if ((value + zeroOffset) < 0 && (value + zeroOffset) > -3) {
-        current = 0;
-      } else {
-        #define VCC 5.0 // volts
-        //  Current = ((analogRead(1)*(5.00/1024))- 2.5)/ .02;
-        current = (((value + zeroOffset) * (VCC)/1024) - (VCC)/2) / 0.02;
-      }
-      values.enqueue(current);
-      #ifdef DEBUGGING_LOGGER
-      Serial.print("; estimated current: ");
-      Serial.print(current);
-      #endif
-      
-      float avgCurrent = values.sum() / TINYQUEUE_SIZE;
-      
-      if (random(100) < 0) {
-        values.dump(Serial);
-      }
-      
-      #ifdef DEBUGGING_LOGGER
-      Serial.print("; 50mavg current = ");
-      Serial.println(avgCurrent);
-      #endif
-      
-      logEntry.peakDischarge = max(logEntry.peakDischarge, avgCurrent);
-      logEntry.peakRegen = min(logEntry.peakRegen, avgCurrent);
-      
-      float mAh = current * 20 / 3600;  // amps * 20ms / 3600s/H
-      
-      if (current > 0) {
-        logEntry.totalDischarge += mAh;
-      } else {
-        logEntry.totalRegen -= mAh;
-      }
-      
-      logEntry.duration = millis();
-      
-      if (++updateCounter % 20 == 0) {
-        showLogEntry(logEntry);
-        updateCounter = 0;
-      }
-      
-      saveValues();
+  Logger(Logger const&);
+  void operator=(Logger const&);
+
+
+  // convert a block location to an EEPROM address
+  int blockToAddy(int block) {
+    return EEPROM_LOGGER_ADDY + block * sizeof(LogEntry);
+  } // int blockToAddy(block)
+
+
+  // returns the block 0..HISTORY-1 for the to-be-written logEntry
+  int findUnusedBlock(void) {
+    int block = 0;    // logical "block", 0..HISTORY-1
+    while (block < HISTORY && EEPROM.read(blockToAddy(block)) != 255) {
+#ifdef DEBUGGING_LOGGER
+      Serial.print("checking block #");
+      Serial.print(block);
+      Serial.print(", address ");
+      Serial.println(blockToAddy(block));
+#endif
+      block += 1;
     }
-    
+
+    if (block >= HISTORY) {
+      block = 0;
+    }
+    return block;
+  } // int findUnusedBlock()
+
+
+  // clears the next block, if needed
+  void clearNextBlock(int block) {
+    if (++ block >= HISTORY) {
+      block = 0;
+    }
+
+    if (EEPROM.read(blockToAddy(block)) != 255) {
+      Serial.print(F(" clearing block #"));
+      Serial.print(block);
+      Serial.print(F(" at address ..."));
+      Serial.println(blockToAddy(block));
+      EEPROM.write(blockToAddy(block), 255);
+    }
+  } // clearNextAddy(block)
+
+
+  // write recent history to EEPROM
+  void saveValues(void) {
+#ifdef DEBUGGING_LOGGER
+    Serial.print("saving? millis - last = ");
+    Serial.print(millis() - lastWritten);
+    Serial.print("; current = ");
+    Serial.print(abs(current));
+    Serial.print("; throttle = ");
+    Serial.println(throttle->getThrottle());
+#endif
+    if (millis() - lastWritten > WRITE_PERIOD &&
+      abs(current) < 1.5 && 
+      abs(Chuck::getInstance()->Y) < THROTTLE_MIN) {
+      Serial.print(F("Logger: saving ..."));
+      unsigned long start = millis();
+      clearNextBlock(logEntryBlock);
+      EEPROM_writeAnything(blockToAddy(logEntryBlock), logEntry);
+      Serial.print(F("; done in "));
+      Serial.print(millis() - start);
+      Serial.println(F("ms"));
+      lastWritten = millis();
+    }
+  } // saveValues(void)
+
+
+  // prints a single LogEntry record
+  void showLogEntry(LogEntry entry) {
+    Serial.print(F("peak discharge: "));
+    Serial.print(entry.peakDischarge);
+    Serial.print(F("A; peak regen: "));
+    Serial.print(entry.peakRegen);
+    Serial.print(F("A; total Discharge: "));
+    Serial.print(entry.totalDischarge);
+    Serial.print(F("mAh; total Regen: "));
+    Serial.print(entry.totalRegen);
+    Serial.print(F("mAh; net discharge: "));
+    Serial.print(entry.totalDischarge - entry.totalRegen);
+    Serial.print(F("mAh in "));
+    Serial.print(entry.duration / 1000);
+    Serial.println(F(" seconds"));
+  } // showLogEntry(LogEntry logEntry)
+
+
+  // displays the history in the log (EEPROM)
+  void showLogHistory(void) {
+    LogEntry entry;
+    byte b; 
+    byte block = logEntryBlock;
+
+    Serial.println(F("History (oldest to newest):"));
+    for (b = 0; b < HISTORY; b ++) {
+      if (EEPROM.read(blockToAddy(block)) != 255 &&
+        EEPROM_readAnything(blockToAddy(block), entry)) {
+        Serial.print(F("#"));
+        Serial.print(block);
+        Serial.print(F(": "));
+        showLogEntry(entry);
+      }
+      if (++block >= HISTORY) {
+        block = 0;
+      }
+    }
+  } // showLogHistory()
+
+
+  void buildHistory(void) {
+    LogEntry entry;
+    byte block = logEntryBlock;
+    for (byte b = 1; b < 4; b++) {
+      if (--block < 0) {
+        block = HISTORY;
+      }
+      Serial.print(F("Looking @ block "));
+      Serial.println(block);
+      if (EEPROM.read(blockToAddy(block)) == 255) {
+        history[b] = 0.0;
+      } else {
+        EEPROM_readAnything(blockToAddy(block), entry);
+        history[b] = entry.totalDischarge - entry.totalRegen;
+      }
+    }
+  } // buildHistory()
+  
+
+public:
+
+  // returns the Singleton instance
+  static Logger* getInstance(void) {
+    static Logger logger;    // NB: I don't like this idiom
+    return &logger;
+  } // static Logger* getInstance()
+
+
+  void init(int newPin) {
+    pin = newPin;
+    if (pin) {
+      pinMode(pin, INPUT_PULLUP);
+      int value = analogRead(pin);
+      if (value >= 1000) {
+        Serial.println(F("No ammeter detected; disabling logging"));
+        pin = 0;
+      } 
+      else {
+        pinMode(pin, INPUT);
+        int sum = 0;
+        for (int i = 0; i < 50; i++) {
+          sum += analogRead(pin);
+        }
+        int avg = sum / 50;
+        zeroOffset = 512 - avg;
+        Serial.print(F("Using 0A offset "));
+        Serial.println(zeroOffset);
+
+        logEntryBlock = findUnusedBlock();
+        Serial.print(F("This entry: block #"));
+        Serial.println(logEntryBlock);
+
+        showLogHistory();
+        buildHistory();
+      }
+    }
+  } // init(pin)
+
+
+  void update(void) {
+    static int updateCounter = 0;
+    if (! pin) return;
+
+    int value = analogRead(pin);
+    #ifdef DEBUGGING_LOGGER
+    Serial.print(F("Ammeter value: "));
+    Serial.print(value);
+    #endif
+
+    if ((value + zeroOffset) < 0 && (value + zeroOffset) > -3) {
+      current = 0;
+    } 
+    else {
+      #define VCC 5.0 // volts
+      //  Current = ((analogRead(1)*(5.00/1024))- 2.5)/ .02;
+      current = (((value + zeroOffset) * (VCC)/1024) - (VCC)/2) / 0.02;
+    }
+    values.enqueue(current);
+    #ifdef DEBUGGING_LOGGER
+    Serial.print(F("; estimated current: "));
+    Serial.print(current);
+    #endif
+
+    float avgCurrent = values.sum() / TINYQUEUE_SIZE;
+
+    if (random(100) < 0) {
+      values.dump(Serial);
+    }
+
+    #ifdef DEBUGGING_LOGGER
+    Serial.print(F("; 50mavg current = "));
+    Serial.println(avgCurrent);
+    #endif
+
+    logEntry.peakDischarge = max(logEntry.peakDischarge, avgCurrent);
+    logEntry.peakRegen = min(logEntry.peakRegen, avgCurrent);
+
+    float mAh = current * 20 / 3600;  // amps * 20ms / 3600s/H
+
+    if (current > 0) {
+      logEntry.totalDischarge += mAh;
+    } 
+    else {
+      logEntry.totalRegen -= mAh;
+    }
+
+    logEntry.duration = millis();
+
+    if (++updateCounter % 20 == 0) {
+      showLogEntry(logEntry);
+      updateCounter = 0;
+    }
+
+    saveValues();
+  }
+
+
+  float getDischarge(void) {
+    return logEntry.totalDischarge;
+  }
+
+
+  float getRegen(void) {
+    return logEntry.totalRegen;
+  }
+
+  float getNetDischarge(void) {
+    return logEntry.totalDischarge - logEntry.totalRegen;
+  }
+
+
+  float getCurrent(void) {
+    return current;
+  }
+
+  float getNthRec(byte n) {
+    return history[n];
+  }
+
 }; // class Logger
 
 #endif
+

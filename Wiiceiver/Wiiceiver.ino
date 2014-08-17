@@ -27,11 +27,12 @@
  *
  */
  
- 
+#include <stdlib.h>
 #include <avr/wdt.h> 
 #include <Wire.h>
 #include <Servo.h>
 #include <EEPROM.h>
+
 
 #define WIICEIVER_VERSION "1.2 experimental"
 
@@ -66,6 +67,21 @@ Blinker green, red;
 Throttle* throttle;
 Logger* logger;
 
+#define USE_DISPLAY
+
+#ifdef USE_DISPLAY
+#include <SPI.h>
+#include "AdafruitGFX.h"
+#include "AdafruitDisplay.h"
+
+#include "Utils.h"
+#include "Display.h"
+
+Adafruit_SSD1306 adafruitDisplay(pinLocation(OLED_RESET_ID));
+
+Display* display;
+
+#endif
 
 /********
  *  WATCHDOG STUFF
@@ -97,10 +113,11 @@ ISR(WDT_vect) {
 } // ISR for the watchdog timer
 
 
+
 // display the current value of the watchdog counter
 void display_WDC(void) {
   byte wdt_counter = EEPROM.read(EEPROM_WDC_ADDY);
-  Serial.print("Watchdog Resets: ");
+  Serial.print(F("Watchdog Resets: "));
   Serial.println((byte)(wdt_counter + 1));
 } // display_WDC()
 
@@ -118,6 +135,7 @@ void maybeCalibrate(void) {
     return;
   }
 
+  display->printMessage("Calibrate: Hold C ...");
   red.update(10);
   green.update(10);
   while (i < 250 && chuck->C) {
@@ -130,7 +148,7 @@ void maybeCalibrate(void) {
   }
 
   #ifdef DEBUGGING
-  Serial.print("C = ");
+  Serial.print(F("C = "));
   Serial.println(ctr);
   #endif
 
@@ -139,7 +157,9 @@ void maybeCalibrate(void) {
     chuck->writeEEPROM();
     // side effect: reset the WDC
     EEPROM.write(EEPROM_WDC_ADDY, 255);
-    Serial.println("Calibrated");
+    Serial.println(F("Calibrated"));
+    display->printMessage("Calibrated");
+    delay(2000);
   }
 
   red.update(1);
@@ -201,6 +221,7 @@ void freakOut(void) {
     Serial.println(": freaking out");
 #endif
 
+  display->printMessage("NO SIGNAL");
   red.stop();
   green.stop();
   while (!chuck->isActive() && targetMS > millis()) {
@@ -250,7 +271,7 @@ bool waitForActivity(void) {
   unsigned long timer = millis() + 1000;
   #ifdef DEBUGGING
   Serial.print(millis());
-  Serial.print(" Waiting for activity ... ");
+  Serial.print(F(" Waiting for activity ... "));
   #endif
   
   chuck->update();
@@ -262,7 +283,7 @@ bool waitForActivity(void) {
 
   #ifdef DEBUGGING
   Serial.print(millis());
-  Serial.println(chuck->isActive() ? ": active!" : ": not active :(");
+  Serial.println(chuck->isActive() ? F(": active!") : F(": not active :("));
   #endif
   
   return chuck->isActive();
@@ -277,7 +298,7 @@ void stopChuck() {
   digitalWrite(pinLocation(WII_POWER_ID), LOW);
   delay(250);
 #ifdef DEBUGGING
-    Serial.println("Nunchuck: power on");
+    Serial.println(F("Nunchuck: power on"));
 #endif
   digitalWrite(pinLocation(WII_POWER_ID), HIGH);
   delay(250);
@@ -292,7 +313,7 @@ bool startChuck() {
   
   while (tries < 10) {
     #ifdef DEBUGGING
-    Serial.print("(Re)starting the nunchuck: #");
+    Serial.print(F("(Re)starting the nunchuck: #"));
     Serial.println(tries);
     #endif
   
@@ -335,6 +356,8 @@ void handleInactivity() {
   Serial.println("Waiting for 0");
   #endif  
   
+  display->printMessage("WAITING...");
+  
   while (abs(chuck->Y) > 0.1) {
     chuck->update();
     wdt_reset();
@@ -345,6 +368,8 @@ void handleInactivity() {
   Serial.print(millis());
   Serial.println(": finished inactivity -- chuck is active");
   #endif
+
+  display->printMessage("Active!");
   
   watchdog_setup(WDTO_250MS);
 } // handleInactivity()
@@ -356,15 +381,21 @@ void setup() {
   wdt_disable();
   Serial.begin(115200);
 
-  Serial.print("Wiiceiver v ");
-  Serial.print(WIICEIVER_VERSION);
-  Serial.print(" (compiled ");
-  Serial.print(__DATE__);
-  Serial.print(" ");
-  Serial.print(__TIME__);
-  Serial.println(")");
-  display_WDC();
+  Serial.print(F("Wiiceiver v "));
+  Serial.print(F(WIICEIVER_VERSION));
+  Serial.print(F(" (compiled "));
+  Serial.print(F(__DATE__));
+  Serial.print(F(" "));
+  Serial.print(F(__TIME__));
+  Serial.println(F(")"));
+
+  #ifdef USE_DISPLAY
+  display = Display::getInstance();
+  display->init(&adafruitDisplay);
+  #endif  
   
+  display_WDC();
+
   green.init(pinLocation(GREEN_LED_ID));
   red.init(pinLocation(RED_LED_ID));
 
@@ -391,7 +422,7 @@ void setup() {
   #ifdef DEBUGGING
   Serial.println("Nunchuck is active!");
   #endif
-
+  
   throttle = Throttle::getInstance();
   throttle->init();
 
@@ -413,6 +444,9 @@ void loop() {
   red.run();
   chuck->update();
   logger->update();
+  #ifdef USE_DISPLAY
+  display->update();
+  #endif
   
   // for forcing a watchdog timeout
   #undef SUICIDAL_Z
@@ -434,21 +468,21 @@ void loop() {
     if (throttleValue != lastThrottleValue) {
       updateLEDs();
       #ifdef DEBUGGING
-      Serial.print("y=");
+      Serial.print(F("y="));
       Serial.print(chuck->Y, 4);
-      Serial.print(", ");
-      Serial.print("c=");
+      Serial.print(F(", "));
+      Serial.print(F("c="));
       Serial.print(chuck->C);      
-      Serial.print(", z=");
+      Serial.print(F(", z="));
       Serial.print(chuck->Z);
-      Serial.print(", ");
+      Serial.print(F(", "));
       Serial.println(throttleValue, 4); 
       #endif
       lastThrottleValue = throttleValue;
     }
     int delayMS = constrain(startMS + 21 - millis(), 5, 20);
     #ifdef DEBUGGING_INTERVALS
-    Serial.print("sleeping "); 
+    Serial.print(F("sleeping ")); 
     Serial.println(delayMS);
 #   endif
     delay(delayMS);

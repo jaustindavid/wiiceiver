@@ -78,7 +78,7 @@ private:
   
 public:
   float X, Y;
-  bool C, Z;
+  bool C, Z, zPrev;
 
 
 private:
@@ -157,6 +157,8 @@ private:
     }
 
     C = ((status[5] & B00000010) >> 1) == 0;
+    
+    zPrev = Z;
     Z = (status[5] & B00000001) == 0;
 
 
@@ -169,19 +171,19 @@ private:
       saveLastStatus();
     }
     
-#ifdef DEBUGGING_CHUCK_ACTIVITY
-    Serial.print("CHUCK: ");
+    #ifdef DEBUGGING_CHUCK_ACTIVITY
+    Serial.print(F("CHUCK: "));
     for (int i = 0; i < 5; i++) {
-      Serial.print(" [");
+      Serial.print(F(" ["));
       Serial.print(status[i], DEC);
-      Serial.print(",");
+      Serial.print(F(","));
       Serial.print(lastStatus[i], DEC);
-      Serial.print("]");
+      Serial.print(F("]"));
     }
-    Serial.print("; sameness ");
+    Serial.print(F("; sameness "));
     Serial.print(activitySamenessCount);    
     Serial.println();
-#endif
+    #endif
 
 
   } // _computeStatus(void)
@@ -223,12 +225,12 @@ public:
     if (abs(storedY - DEFAULT_Y_ZERO) <= 25) {
       Y0 = storedY;
 #ifdef DEBUGGING_CHUCK
-      Serial.println("Using stored value");
+      Serial.println(F("Using stored value"));
 #endif
 } 
     else {
 #ifdef DEBUGGING_CHUCK
-      Serial.println("Ingoring stored value");
+      Serial.println(F("Ingoring stored value"));
 #endif
     }
   } // readEEPROM()
@@ -269,7 +271,7 @@ public:
     Wire.write((uint8_t)0x00);
     Wire.endTransmission();
 #ifdef DEBUGGING_CHUCK
-    Serial.print(" transmitted @ ");
+    Serial.print(F(" transmitted @ "));
     Serial.print(millis());
 #endif
 
@@ -280,7 +282,7 @@ public:
     }
     
  #ifdef DEBUGGING_CHUCK
-    Serial.print("; setup complete @ ");
+    Serial.print(F("; setup complete @ "));
     Serial.println(millis());
 #endif   
   } // void setup(void)
@@ -302,7 +304,7 @@ public:
 
     _computeStatus();
 #ifdef DEBUGGING_CHUCK_ACTIVITY
-   Serial.print("Active? ");
+   Serial.print(F("Active? "));
    Serial.println(isActive() ? "yes" : "no");
 #endif
 

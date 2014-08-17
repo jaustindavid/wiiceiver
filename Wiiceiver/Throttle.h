@@ -60,15 +60,15 @@ class Throttle {
     
     void readAutoCruise(void) {
       byte storedValue = EEPROM.read(EEPROM_AUTOCRUISE_ADDY);
-      Serial.print("Read autoCruise from EEPROM: ");
+      Serial.print(F("Read autoCruise from EEPROM: "));
       Serial.print(storedValue);
 
       if (storedValue > 0 && storedValue < 100) {
         autoCruise = 0.01 * storedValue;
-        Serial.print("; setting autoCruise = ");
+        Serial.print(F("; setting autoCruise = "));
         Serial.println(autoCruise);
       } else {
-        Serial.print("; ignoring, leaving autoCruise = ");
+        Serial.print(F("; ignoring, leaving autoCruise = "));
         Serial.println(autoCruise);
       }
     } // float readAutoCruise(void) 
@@ -81,7 +81,7 @@ class Throttle {
       int storedValue = autoCruise * 100;
       EEPROM.write(EEPROM_AUTOCRUISE_ADDY, storedValue);
       #ifdef DEBUGGING_THROTTLE
-      Serial.print("Storing autoCruise as ");
+      Serial.print(F("Storing autoCruise as "));
       Serial.println(storedValue);
       #endif         
     } // void writeAutoCruise(void)
@@ -109,7 +109,7 @@ class Throttle {
           abs(chuck->X) > 0.75) {
         ++xCounter;
         #ifdef DEBUGGING_THROTTLE_CAC
-        Serial.print("checkAutoCruise: xCounter = ");
+        Serial.print(F("checkAutoCruise: xCounter = ");
         Serial.println(xCounter);
         #endif
         if (xCounter == 150) { // ~3s holding X
@@ -120,9 +120,9 @@ class Throttle {
         xCounter = 0;
         #ifdef DEBUGGING_THROTTLE_CAC
         Serial.println("checkAutoCruise: no X or Y");
-        Serial.print("x = ");
+        Serial.print(F("x = ");
         Serial.print(abs(chuck->X));
-        Serial.print(", y = ");
+        Serial.print(F(", y = ");
         Serial.println(abs(chuck->Y));
         #endif        
         return false;
@@ -154,9 +154,9 @@ class Throttle {
       #define CCR_WAITING 2          // C -> !C, no input -- resume is possible
 
       #ifdef DEBUGGING_THROTTLE_CCR
-      Serial.print("checkCruiseReturn (");
+      Serial.print(F("checkCruiseReturn (");
       Serial.print(ccrState);
-      Serial.print("): ");
+      Serial.print(F("): ");
       #endif 
 
       if (ccrState == CCR_WAITING &&
@@ -168,7 +168,7 @@ class Throttle {
 
       if (chuck->C && !previousC && ccrState == CCR_WAITING) {
         #ifdef DEBUGGING_THROTTLE_CCR
-        Serial.print("!C -> C && still time");
+        Serial.print(F("!C -> C && still time");
         #endif
         ccrState = CCR_RESUMING;
       }
@@ -178,8 +178,8 @@ class Throttle {
         previousCruiseMS = millis();
         newThrottle = 0.0;
         #ifdef DEBUGGING_THROTTLE_CCR
-        Serial.print("C -> !C");
-        Serial.print("saving prev: ");
+        Serial.print(F("C -> !C");
+        Serial.print(F("saving prev: ");
         Serial.print(previousCruiseLevel);
         #endif
         ccrState = CCR_WAITING;
@@ -189,7 +189,7 @@ class Throttle {
       if (abs(chuck->X) > THROTTLE_MIN_CC ||
           abs(chuck->Y) > THROTTLE_MIN_CC) {
         #ifdef DEBUGGING_THROTTLE_CCR
-        Serial.print("stick");
+        Serial.print(F("stick");
         #endif
         previousCruiseMS = previousCruiseLevel = 0;
         newThrottle = 0.0;
@@ -201,7 +201,7 @@ class Throttle {
       } // CCR_RESUMING
 
       #ifdef DEBUGGING_THROTTLE_CCR
-      Serial.print(" (->");
+      Serial.print(F(" (->");
       Serial.print(ccrState);
       Serial.println(")");
       #endif
@@ -284,22 +284,22 @@ class Throttle {
      */
     float update() {
       #ifdef DEBUGGING_THROTTLE
-      Serial.print("Throttle: ");
-      Serial.print("y=");
+      Serial.print(F("Throttle: "));
+      Serial.print(F("y="));
       Serial.print(chuck->Y, 4);
-      Serial.print(", ");
-      Serial.print("c=");
+      Serial.print(F(", "));
+      Serial.print(F("c="));
       Serial.print(chuck->C);
-      Serial.print("; ");
+      Serial.print(F("; "));
       #endif
 
       if (float newThrottle = checkCruiseReturn()) {
         // CC return: in CC mode, drop C, then resume shortly after 
         // (with no other input) -- resume the previous CC 
         #ifdef DEBUGGING_THROTTLE
-        Serial.print(" resuming cruise: ");
+        Serial.print(F(" resuming cruise: "));
         Serial.print(newThrottle);
-        Serial.print(") ");
+        Serial.print(F(") "));
         #endif         
         throttle = newThrottle;
       } else if (chuck->C) { 
