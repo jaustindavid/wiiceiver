@@ -32,9 +32,10 @@
 #include <Wire.h>
 #include <Servo.h>
 #include <EEPROM.h>
+#include "MemoryFree.h"
 
 
-#define WIICEIVER_VERSION "1.2 experimental"
+#define WIICEIVER_VERSION "1.5 exp"
 
 // addys for vars stored in EEPROM
 #define EEPROM_Y_ADDY            0
@@ -71,18 +72,19 @@ Logger* logger;
 #define USE_DISPLAY
 
 #ifdef USE_DISPLAY
-#include <SPI.h>
-#include "AdafruitGFX.h"
-#include "AdafruitDisplay.h"
-
+#include "wiiceiver_i2c.h"
 #include "Utils.h"
 #include "Display.h"
 
-Adafruit_SSD1306 adafruitDisplay(pinLocation(OLED_RESET_ID));
-
 Display* display;
-
 #endif
+
+#ifdef DEBUGGING
+#include "Utils.h"
+
+Timer memTimer;
+#endif
+
 
 /********
  *  WATCHDOG STUFF
@@ -137,7 +139,7 @@ void maybeCalibrate(void) {
   }
 
   #ifdef USE_DISPLAY
-  display->printMessage("Calibrate: Hold C ...");
+  display->printMessage("Calibrate: ", "Hold C ...", "", "");
   #endif
   red.update(10);
   green.update(10);
@@ -162,7 +164,7 @@ void maybeCalibrate(void) {
     EEPROM.write(EEPROM_WDC_ADDY, 255);
     Serial.println(F("Calibrated"));
     #ifdef USE_DISPLAY
-    display->printMessage("Calibrated");
+    display->printMessage("Calibrated", "", "", "");
     delay(1000);
     #endif
   }
@@ -227,7 +229,7 @@ void freakOut(void) {
 #endif
 
   #ifdef USE_DISPLAY
-  display->printMessage("NO SIGNAL");
+  display->printMessage("NO SIGNAL", "", "Lost signal", "from nunchuck");
   #endif
   red.stop();
   green.stop();
@@ -364,7 +366,7 @@ void handleInactivity() {
   #endif  
 
   #ifdef USE_DISPLAY  
-  display->printMessage("WAITING...");
+  display->printMessage("WAITING...", "", "Return stick", "to center");
   #endif
   
   while (abs(chuck->Y) > 0.1) {
@@ -379,7 +381,7 @@ void handleInactivity() {
   #endif
 
   #ifdef USE_DISPLAY
-  display->printMessage("Active!");
+  display->printMessage("Active!", "", "Resuming", "operation");
   #endif
   
   watchdog_setup(WDTO_250MS);
@@ -405,7 +407,7 @@ void setup() {
     Serial.println(F("Loading Display..."));
     #endif
   display = Display::getInstance();
-  display->init(&adafruitDisplay);
+  display->init();
   #endif  
   
   display_WDC();
@@ -430,7 +432,7 @@ void setup() {
   splashScreen();
 
   #ifdef DEBUGGING
-  Serial.println("Starting the nunchuck ...");
+  Serial.println(F("Starting the nunchuck ..."));
   #endif
   chuck = Chuck::getInstance();
   green.high();
@@ -441,17 +443,21 @@ void setup() {
     handleInactivity();
   }
   #ifdef DEBUGGING
-  Serial.println("Nunchuck is active!");
+  Serial.println(F("Nunchuck is active!"));
   #endif
   
   throttle = Throttle::getInstance();
   throttle->init();
+  #ifdef DEBUGGING
+  Serial.println(F("Throttle is active!"));
+  #endif
 
   green.start(10);
   red.start(10);
   
   green.update(1);
   red.update(1);
+  
   watchdog_setup(WDTO_250MS);
 } // void setup()
 
@@ -505,8 +511,18 @@ void loop() {
     #ifdef DEBUGGING_INTERVALS
     Serial.print(F("sleeping ")); 
     Serial.println(delayMS);
-#   endif
+    #endif
     delay(delayMS);
+    
+    #ifdef DEBUGGING
+    #ifdef MEMORY_FREE_H
+    if (memTimer.isExpired()) {
+      memTimer.reset(10000);
+      Serial.print("free memory: ");
+      Serial.println(freeMemory());
+    }
+    #endif
+    #endif
   } // if (chuck->isActive())
 }
 

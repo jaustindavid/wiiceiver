@@ -112,8 +112,7 @@ class Display {
     }
     
     
-    void init(Adafruit_SSD1306* newAdafruitDisplay) {
-      
+    void init(Adafruit_SSD1306* newAdafruitDisplay) {      
       adafruitDisplay = newAdafruitDisplay;
       adafruitDisplay->begin(SSD1306_SWITCHCAPVCC, 0x3D);  // initialize with the I2C addr 0x3D (for the 128x64)
       splashScreen();
@@ -179,7 +178,7 @@ class Display {
         adafruitDisplay->println(F("mAh"));
       } else {
         adafruitDisplay->setTextSize(1);
-        adafruitDisplay->print(F("Peak Discharge: "));
+        adafruitDisplay->print(F("Peak Discharge:"));
         adafruitDisplay->print(logger->getPeakDischarge(), 1);
         adafruitDisplay->println(F("A"));
         adafruitDisplay->setTextSize(3);
