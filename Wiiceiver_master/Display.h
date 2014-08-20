@@ -154,11 +154,10 @@ class Display {
       statusPacket.message.current = logger->getCurrent();
 
       unsigned long start = millis();
-      // OPTIMIZATION: if the first text bit is 255, don't send the text block
+      // OPTIMIZATION: don't send the text block (usually)
       /*
-      if (statusPacket.message.text[0][0] != (char)255) {
+      if (abs(throttle->getThrottle()) < THROTTLE_MIN) {
         xmit(statusPacket.bytes, sizeof(statusPacket.bytes));
-        statusPacket.message.text[0][0] = (char)255;
       } else {
         */
         xmit(statusPacket.bytes, sizeof(statusPacket.bytes) - sizeof(statusPacket.message.text));

@@ -39,8 +39,9 @@
     #define DISP_DISCHARGE    2
     #define DISP_REGEN        3
     #define DISP_HISTORY      4
-    #define DISP_MESSAGE      5       
-    #define DISP_NUMSCREENS   6
+    #define DISP_MESSAGE      5
+    #define DISP_SPLASH       6    
+    #define DISP_NUMSCREENS   7
     #define NO_SCREEN         99   // not a screen
     byte screen, prevScreen, nextScreen = NO_SCREEN;
     
@@ -96,12 +97,16 @@
       display.setTextColor(WHITE);
       display.setCursor(0,0);
       display.setTextSize(2);
-      display.print(F("Wiiceiver!"));
+      display.println(F("Wiiceiver"));
+      display.println(F(" Display!"));      
       display.setTextSize(1);
       display.print(F("head v"));
       display.println(F(WIICEIVER_HEAD_VERSION));
       display.print(F("Watchdog resets: "));
       display.println((byte)(EEPROM.read(EEPROM_WDC_ADDY) + 1));
+      display.print(F("Uptime: "));
+      display.print((int)(millis() / 1000));
+      display.print(F("s"));
       display.display();
     }    
 
@@ -109,11 +114,6 @@
 
     
     void printCurrent(void) {
-      if (screen != prevScreen) {
-        Serial.println(F("screen: CURRENT"));
-        displayTimer.reset();
-      }
-      
       display.clearDisplay();
       display.setTextColor(WHITE);
       display.setCursor(0,0);
@@ -135,12 +135,7 @@
     }
     
     
-    void printDischarge(void) {
-      if (screen != prevScreen) {
-        Serial.println(F("screen: DISCHARGE"));
-        displayTimer.reset();
-      }
-   
+    void printDischarge(void) {   
       display.clearDisplay();
       display.setTextColor(WHITE);
       display.setCursor(0,0);
@@ -162,11 +157,6 @@
     
 
     void printRegen(void) {
-      if (screen != prevScreen) {
-        Serial.println(F("screen: REGEN"));
-        displayTimer.reset();
-      }
-   
       display.clearDisplay();
       display.setTextColor(WHITE);
       display.setCursor(0,0);
@@ -186,12 +176,7 @@
     } // printRegen()
 
 
-    void printHistory(void) {
-      if (screen != prevScreen) {
-        Serial.println(F("screen: HISTORY"));
-        displayTimer.reset();
-      }
-   
+    void printHistory(void) {   
       display.clearDisplay();
       display.setTextColor(WHITE);
       display.setCursor(0,0);
@@ -209,30 +194,11 @@
     
     
     void printStatus() {
-      if (screen != prevScreen) {
-        Serial.println(F("screen: STATUS"));
-        displayTimer.reset();
-      }
       display.clearDisplay();
       display.setTextColor(WHITE);
       display.setCursor(0,0);
       display.setTextSize(2);
       display.println(F("Status"));
-      /*
-      if (statusPacket.message.throttle > 0) {
-        display.print(F("Gas: "));
-        justify(4, statusPacket.message.throttle * 100, 0);
-        display.setTextSize(1); 
-        display.println(F("%"));
-      } else if (statusPacket.message.throttle < 0) {
-        display.print(F("Brake:"));
-        justify(4, statusPacket.message.throttle * 100, 0);   
-        display.setTextSize(1); 
-        display.println(F("%")); 
-      } else {
-        display.println(F("Neutral"));
-      }
-      */
       display.setTextSize(4);
       justify(4, statusPacket.message.throttle * 100, 0);   
       display.print(F("%"));
@@ -291,16 +257,22 @@
       } else {
         if (statusPacket.message.chuckZ && ! zPrev &&
             abs(statusPacket.message.chuckY) < 0.25) {
+          #ifdef DEBUGGING
           Serial.print(F("screen = "));
           Serial.print(screen);
           Serial.print(F("; prev = "));
           Serial.println(prevScreen);
+          #endif
           if (nextScreen != NO_SCREEN) {
+            #ifdef DEBUGGING
             Serial.println(F("returning to next screen"));
+            #endif
             screen = nextScreen;
             nextScreen = NO_SCREEN;
           } else {
+            #ifdef DEBUGGING
             Serial.println(F("incrementing screens"));
+            #endif
             screen = (screen + 1) % DISP_NUMSCREENS;
           }
         }
@@ -326,6 +298,9 @@
         case DISP_HISTORY:
             printHistory();
             break;
+        case DISP_SPLASH:
+            splashScreen();
+            break;    
         case DISP_STATUS: // fallthrough
         default: 
             printStatus();
@@ -335,11 +310,11 @@
         prevScreen = screen;
       }
       
-      /*
+      #ifdef DEBUGGING
       Serial.print(F("Display latency: "));
       Serial.print(millis() - startMS);
       Serial.println(F("ms"));
-      */
+      #endif
       lastUpdate = millis();
     } // update()
     

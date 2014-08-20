@@ -43,7 +43,7 @@
 #define EEPROM_WDC_ADDY          2
 #define EEPROM_LOGGER_ADDY       16
 
-#define DEBUGGING
+// #define DEBUGGING
 
 #include "Blinker.h"
 #include "Chuck.h"
