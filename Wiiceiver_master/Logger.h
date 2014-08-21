@@ -62,7 +62,7 @@
 
 // for bench testing, the FAKE_AMMETER will inject random data influenced by 
 // chuck Y position.
-#define FAKE_AMMETER
+// #define FAKE_AMMETER
 
 #ifdef FAKE_AMMETER
 #define analogRead(PIN) (random(20) * (1+Chuck::getInstance()->Y)+512)

@@ -138,7 +138,7 @@ void maybeCalibrate(void) {
     return;
   }
 
-  #ifdef USE_DISPLAY
+  #ifdef DISPLAY_H
   display->printMessage("Calibrate: ", "Hold C ...", "", "");
   #endif
   red.update(10);
@@ -163,10 +163,14 @@ void maybeCalibrate(void) {
     // side effect: reset the WDC
     EEPROM.write(EEPROM_WDC_ADDY, 255);
     Serial.println(F("Calibrated"));
-    #ifdef USE_DISPLAY
+    #ifdef DISPLAY_H
     display->printMessage("Calibrated", "", "", "");
-    delay(1000);
     #endif
+  } else {
+    #ifdef DISPLAY_H
+    display->printMessage("Cancelled", "", "not recalibrated", "");
+    #endif
+    
   }
 
   red.update(1);
@@ -228,7 +232,7 @@ void freakOut(void) {
     Serial.println(": freaking out");
 #endif
 
-  #ifdef USE_DISPLAY
+  #ifdef DISPLAY_H
   display->printMessage("NO SIGNAL", "", "Lost signal", "from nunchuck");
   #endif
   red.stop();
@@ -365,7 +369,7 @@ void handleInactivity() {
   Serial.println("Waiting for 0");
   #endif  
 
-  #ifdef USE_DISPLAY  
+  #ifdef DISPLAY_H  
   display->printMessage("WAITING...", "", "Return stick", "to center");
   #endif
   
@@ -380,7 +384,7 @@ void handleInactivity() {
   Serial.println(": finished inactivity -- chuck is active");
   #endif
 
-  #ifdef USE_DISPLAY
+  #ifdef DISPLAY_H
   display->printMessage("Active!", "", "Resuming", "operation");
   #endif
   
@@ -394,7 +398,7 @@ void setup() {
   wdt_disable();
   Serial.begin(115200);
 
-  Serial.print(F("Wiiceiver v "));
+  Serial.print(F("Wiiceiver Master v "));
   Serial.print(F(WIICEIVER_VERSION));
   Serial.print(F(" (compiled "));
   Serial.print(F(__DATE__));
@@ -402,13 +406,6 @@ void setup() {
   Serial.print(F(__TIME__));
   Serial.println(F(")"));
 
-  #ifdef USE_DISPLAY
-    #ifdef DEBUGGING
-    Serial.println(F("Loading Display..."));
-    #endif
-  display = Display::getInstance();
-  display->init();
-  #endif  
   
   display_WDC();
 
@@ -417,9 +414,9 @@ void setup() {
 
   setup_pins();
   
-    #ifdef DEBUGGING
-    Serial.println(F("Starting ESC..."));
-    #endif
+  #ifdef DEBUGGING
+  Serial.println(F("Starting ESC..."));
+  #endif
   ESC = ElectronicSpeedController::getInstance();
   ESC->init(pinLocation(ESC_PPM_ID));
 
@@ -430,7 +427,7 @@ void setup() {
   logger->init(pinLocation(AMMETER_ID));
   
   splashScreen();
-
+    
   #ifdef DEBUGGING
   Serial.println(F("Starting the nunchuck ..."));
   #endif
@@ -452,12 +449,21 @@ void setup() {
   Serial.println(F("Throttle is active!"));
   #endif
 
+  #ifdef DISPLAY_H
+    #ifdef DEBUGGING
+    Serial.println(F("Loading Display..."));
+    #endif
+  display = Display::getInstance();
+  display->init();
+  #endif  
+
+
   green.start(10);
   red.start(10);
   
   green.update(1);
-  red.update(1);
-  
+  red.update(1);  
+    
   watchdog_setup(WDTO_250MS);
 } // void setup()
 
@@ -471,7 +477,7 @@ void loop() {
   red.run();
   chuck->update();
   logger->update();
-  #ifdef USE_DISPLAY
+  #ifdef DISPLAY_H
   display->update();
   #endif
   

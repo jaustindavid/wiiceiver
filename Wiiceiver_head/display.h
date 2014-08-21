@@ -198,7 +198,13 @@
       display.setTextColor(WHITE);
       display.setCursor(0,0);
       display.setTextSize(2);
-      display.println(F("Status"));
+      if (abs(statusPacket.message.throttle) < 0.05) {
+        display.println(F("Neutral"));
+      } else if (statusPacket.message.throttle > 0) {
+        display.println(F("Gas"));
+      } else {
+        display.println(F("Brake"));
+      }
       display.setTextSize(4);
       justify(4, statusPacket.message.throttle * 100, 0);   
       display.print(F("%"));

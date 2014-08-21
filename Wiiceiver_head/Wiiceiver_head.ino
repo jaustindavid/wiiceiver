@@ -61,7 +61,8 @@ All text above, and the splash screen must be included in any redistribution
 #define OLED_RESET 13
 Adafruit_SSD1306 display(OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
 
-// #define DEBUGGING
+#define DEBUGGING
+// #define DEBUGGING_I2C
 
 #define WIICEIVER_HEAD_VERSION "0.1"
 // addys for vars stored in EEPROM

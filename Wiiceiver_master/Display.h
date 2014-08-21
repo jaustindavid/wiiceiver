@@ -95,7 +95,8 @@ class Display {
     }
     
     
-    void init() {      
+    void init() {
+      //Wire.begin();
       splashScreen();
       screen = DISP_DISCHARGE;
     }
@@ -109,9 +110,15 @@ class Display {
       setMessage(2, "Watchdog resets: ", 1);
       appendMessage((byte)(EEPROM.read(EEPROM_WDC_ADDY) + 1));
       */
-      #ifdef DEBUGGING
-      Serial.println("sending info screen");
-      #endif
+      /*
+      char buffer[2][18];
+      snprintf(buffer[0], 18, "v %s", WIICEIVER_VERSION);
+      snprintf(buffer[1], 18, "WDT Resets: %d", (byte)(EEPROM.read(EEPROM_WDC_ADDY) + 1));
+      printMessage("Wiiceiver!", buffer[0], buffer[1], "");
+      */
+      // #ifdef DEBUGGING
+      Serial.println(F("sending info screen"));
+      // #endif
       snprintf(statusPacket.message.text[0], 18, "Wiiceiver!");
       snprintf(statusPacket.message.text[1], 18, "v %s", WIICEIVER_VERSION);
       snprintf(statusPacket.message.text[2], 18, "WDT Resets: %d", (byte)(EEPROM.read(EEPROM_WDC_ADDY) + 1));
@@ -121,6 +128,7 @@ class Display {
       Serial.print("sent ");
       Serial.println(sizeof(statusPacket.bytes));
       #endif
+      //*/
     }    
 
     

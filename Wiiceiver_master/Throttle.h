@@ -56,7 +56,9 @@ class Throttle {
     int xCounter;
     Smoother smoother;
     Chuck* chuck;
-    
+    #ifdef NODISPLAY_H
+    Display *display;
+    #endif
     
     void readAutoCruise(void) {
       byte storedValue = EEPROM.read(EEPROM_AUTOCRUISE_ADDY);
@@ -107,13 +109,21 @@ class Throttle {
           chuck->Z &&
           abs(chuck->Y) < THROTTLE_MIN_CC && 
           abs(chuck->X) > 0.75) {
+            
         ++xCounter;
         #ifdef DEBUGGING_THROTTLE_CAC
         Serial.print(F("checkAutoCruise: xCounter = ");
         Serial.println(xCounter);
         #endif
-        if (xCounter == 150) { // ~3s holding X
+        if (xCounter < 150) {
+          #ifdef NODISPLAY_H
+          display->printMessage("AutoCruise", "", "Hold to set", "");
+          #endif
+        } else if (xCounter == 150) { // ~3s holding X
           writeAutoCruise();  
+          #ifdef NODISPLAY_H
+          display->printMessage("AutoCruise", "", "Saved!", "");
+          #endif
         }
         return true;
       } else {
@@ -246,6 +256,9 @@ class Throttle {
       throttle = 0;
       autoCruise = THROTTLE_MIN_CC;
       xCounter = 0;
+      #ifdef NODISPLAY_H
+      display = Display::getInstance();
+      #endif
     } // Throttle()
     
     
