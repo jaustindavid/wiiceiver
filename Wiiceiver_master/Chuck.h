@@ -65,9 +65,6 @@
 #define WII_ACTIVITY_COUNTER 100  // once per 20ms; 50 per second
  
 class Chuck {
-#ifndef WII_ACTIVITY_COUNTER
-#define WII_ACTIVITY_COUNTER 250  // consecutive static reads & it's considered inactive
-#endif
 #define DEFAULT_Y_ZERO 128
 #define DEFAULT_X_ZERO 128
 
@@ -78,7 +75,7 @@ private:
   
 public:
   float X, Y;
-  bool C, Z, zPrev;
+  bool C, Z;
 
 
 private:
@@ -158,9 +155,7 @@ private:
 
     C = ((status[5] & B00000010) >> 1) == 0;
     
-    zPrev = Z;
     Z = (status[5] & B00000001) == 0;
-
 
     if (!statusChanged()) { 
       if (activitySamenessCount < WII_ACTIVITY_COUNTER) {
@@ -184,7 +179,6 @@ private:
     Serial.print(activitySamenessCount);    
     Serial.println();
     #endif
-
 
   } // _computeStatus(void)
 
@@ -322,6 +316,6 @@ public:
     return activitySamenessCount < WII_ACTIVITY_COUNTER && ! all255s();
   } // bool isActive(void)
 
-};
+}; //class Chuck
 
 #endif

@@ -35,7 +35,7 @@
 #include "MemoryFree.h"
 
 
-#define WIICEIVER_VERSION "1.5 exp"
+#define WIICEIVER_VERSION "1.5.1 exp"
 
 // addys for vars stored in EEPROM
 #define EEPROM_Y_ADDY            0
@@ -68,7 +68,9 @@ Blinker green, red;
 Throttle* throttle;
 Logger* logger;
 
-
+// uncomment the following to NOT use the display
+// not really a performance hit, so this is probably
+// unneccessary for *any* future wiiceiver
 #define USE_DISPLAY
 
 #ifdef USE_DISPLAY
@@ -420,9 +422,9 @@ void setup() {
   ESC = ElectronicSpeedController::getInstance();
   ESC->init(pinLocation(ESC_PPM_ID));
 
-    #ifdef DEBUGGING
-    Serial.println(F("Starting Logger..."));
-    #endif  
+  #ifdef DEBUGGING
+  Serial.println(F("Starting Logger..."));
+  #endif  
   logger = Logger::getInstance();
   logger->init(pinLocation(AMMETER_ID));
   
@@ -450,9 +452,9 @@ void setup() {
   #endif
 
   #ifdef DISPLAY_H
-    #ifdef DEBUGGING
-    Serial.println(F("Loading Display..."));
-    #endif
+  #ifdef DEBUGGING
+  Serial.println(F("Loading Display..."));
+  #endif
   display = Display::getInstance();
   display->init();
   #endif  

@@ -31,6 +31,12 @@
 #define DISPLAY_H
 
 #include "wiiceiver_i2c.h"
+#include "Chuck.h"
+#include "Logger.h"
+#include "Throttle.h"
+#include "Utils.h"
+
+// #define DEBUGGING_DISPLAY
 
 class Display {
   private:
@@ -39,15 +45,6 @@ class Display {
     Throttle *throttle;
     Timer timer;
     byte updateCtr;
-    
-    #define DISP_STATUS       0
-    #define DISP_CURRENT      1
-    #define DISP_DISCHARGE    2
-    #define DISP_REGEN        3
-    #define DISP_HISTORY      4
-    #define DISP_MESSAGE      5        // message doesn't get its own "screen"
-    #define DISP_NUMSCREENS   5
-    byte screen, prevScreen;
 
 
 /********
@@ -60,7 +57,7 @@ class Display {
     chuck = Chuck::getInstance();
     logger = Logger::getInstance();
     throttle = Throttle::getInstance();
-    updateCtr = 0;
+
     timer.reset(5000);
   } // constructor
   
@@ -68,54 +65,25 @@ class Display {
   Display(Display const&);
   void operator=(Display const&);
   
-  
-  void clearMessages(void) {
-  }
-  
-  void setMessage(byte line, const char* buffer, byte size) {
-  }
-  
-  void appendMessage(const char* buffer) {
-  }
-  
-  void appendMessage(const byte buffer) {
-  }
-
-  
 
   public:
   
+    // returns the Singleton instance of this class
     static Display* getInstance(void) {
       static Display myDisplay;
       return &myDisplay;
-    }
-
-    void attachChuck(Chuck* newChuck) {
-      chuck = newChuck;
-    }
+    } // Display* getInstance()
     
     
+    // initialize the class
     void init() {
       //Wire.begin();
       splashScreen();
-      screen = DISP_DISCHARGE;
-    }
+    } // init()
 
 
+    // sends a "splash screen" to the display
     void splashScreen(void) {
-/*
-      clearMessages();
-      setMessage(0, "Wiiceiver!", 2);
-      setMessage(1, WIICEIVER_VERSION, 1);
-      setMessage(2, "Watchdog resets: ", 1);
-      appendMessage((byte)(EEPROM.read(EEPROM_WDC_ADDY) + 1));
-      */
-      /*
-      char buffer[2][18];
-      snprintf(buffer[0], 18, "v %s", WIICEIVER_VERSION);
-      snprintf(buffer[1], 18, "WDT Resets: %d", (byte)(EEPROM.read(EEPROM_WDC_ADDY) + 1));
-      printMessage("Wiiceiver!", buffer[0], buffer[1], "");
-      */
       // #ifdef DEBUGGING
       Serial.println(F("sending info screen"));
       // #endif
@@ -124,12 +92,12 @@ class Display {
       snprintf(statusPacket.message.text[2], 18, "WDT Resets: %d", (byte)(EEPROM.read(EEPROM_WDC_ADDY) + 1));
       statusPacket.message.text[3][0] = '\0'; 
       xmit(statusPacket.bytes, sizeof(statusPacket.bytes));
+
       #ifdef DEBUGGING
       Serial.print("sent ");
       Serial.println(sizeof(statusPacket.bytes));
       #endif
-      //*/
-    }    
+    } // splashScreen()
 
     
     void printMessage(const char* line1, const char* line2, const char* line3, const char* line4) {
@@ -152,6 +120,8 @@ class Display {
       
       statusPacket.message.uptime = millis();
       
+      // our compute budget has a lot of overhead; if we needed a few 
+      // cycles we could move this to init, the contents never change.
       for (byte i = 0; i < 3; i ++) {
         statusPacket.message.history[i] = logger->getNthRec(i);
       }
@@ -159,22 +129,22 @@ class Display {
       statusPacket.message.peakRegen = logger->getPeakRegen();
       statusPacket.message.totalDischarge = logger->getDischarge();
       statusPacket.message.totalRegen = logger->getRegen();
-      statusPacket.message.current = logger->getCurrent();
+      statusPacket.message.current = logger->getAvgCurrent(10);
 
       unsigned long start = millis();
       // OPTIMIZATION: don't send the text block (usually)
-      /*
-      if (abs(throttle->getThrottle()) < THROTTLE_MIN) {
-        xmit(statusPacket.bytes, sizeof(statusPacket.bytes));
-      } else {
-        */
-        xmit(statusPacket.bytes, sizeof(statusPacket.bytes) - sizeof(statusPacket.message.text));
-      // }
+      // the display will flash the text screen if we send it, so 
+      // usually we don't. printmsg(buffer, buffer, buffer, buffer) will do it
+      xmit(statusPacket.bytes, sizeof(statusPacket.bytes) - 
+                               sizeof(statusPacket.message.text));
+
+      #ifdef DEBUGGING_DISPLAY
       Serial.print("Transmitted ");
       Serial.print(sizeof(statusPacket));
       Serial.print(" bytes in ");
       Serial.print(millis() - start);
       Serial.println("ms");
+      #endif
     } // update()
     
     

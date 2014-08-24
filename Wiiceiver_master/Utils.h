@@ -32,6 +32,9 @@
 #define UTILS_H
 
 
+// a simple Timer class, like a stopwatch
+// this is NOTHING AT ALL like the "Timer" library,
+// and is used totally differently.
 class Timer {
   private:
     unsigned long startMS;
@@ -43,17 +46,21 @@ class Timer {
       startMS = millis();
     } // Constructor
     
-    
+   
+   // reset the timer with the previous stop time 
    void reset(void) {
      startMS = millis();
    } // reset()
    
    
+   // reset with a new stop time
    void reset(int newStopMS) {
       stopMS = newStopMS;
       reset();
-   }
+   } // reset(newStopMS)
    
+   
+   // is it expired?
    bool isExpired(void) {
      #ifdef DEBUGGING_TIMER
      Serial.print(F("Expired? "));
@@ -66,6 +73,6 @@ class Timer {
      return millis() >= startMS + stopMS;
    } // bool isExpired()
    
-};
+}; // class Timer
 
 #endif

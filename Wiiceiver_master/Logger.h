@@ -361,14 +361,16 @@ public:
   float getCurrent(void) {
     return current;
   }
+  
+  
+  float getAvgCurrent(const byte n) {
+    return values.sum(n) / n;
+  }
 
-  // n = 0, returns current
-  // n = 1..3 returns one of the previous 3 rides
+
+  // n = 0..2 returns one of the previous 3 rides
   float getNthRec(byte n) {
-    if (n == 0) {
-      return getNetDischarge();
-    } 
-    return history[n-1];
+    return history[n];
   }
 
 }; // class Logger

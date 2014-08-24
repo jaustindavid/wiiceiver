@@ -133,6 +133,19 @@ class StaticQueue {
     } // int StaticQueue::sum()
     
     
+    T sum(byte count) {
+      T tmpSum = 0;
+      byte index = _head;
+      
+      for (byte i = 0; i < count && index != _tail; i++) {
+        tmpSum += _queue[index];
+        index = increment(index);
+      }
+      
+      return tmpSum;
+    }
+    
+    
     // dumps the queue contents to Serial (or whatever Print class)
     void dump(Print & printer) {
       printer.print("head = "); printer.print(_head);

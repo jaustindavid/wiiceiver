@@ -57,7 +57,6 @@
 #define WII_SDA_ID      5
 
 #define AMMETER_ID      6
-#define OLED_RESET_ID   7
 
 
 // #define DEBUGGING_PINS
@@ -95,7 +94,6 @@ int pinLocation(int pinID) {
     {19, 19}, // WII_SCL     A5, don't change
     {18, 18}, // WII_SDA     A4, don't change
     {15, 15}, // AMMETER     A1 (analog) 
-    {4,   4}  // OLED_RESET  any digital pin
   };
   
   if (CSEL < 0) {
