@@ -117,8 +117,10 @@ class Display {
       statusPacket.message.chuckC = chuck->C;
       statusPacket.message.chuckY = chuck->Y;
       statusPacket.message.chuckZ = chuck->Z;
-      
-      statusPacket.message.uptime = millis();
+      statusPacket.message.chuckCcounter = chuck->cCounter;
+      statusPacket.message.chuckZcounter = chuck->zCounter;
+
+      statusPacket.message.uptime = millis() / 1000;
       
       // our compute budget has a lot of overhead; if we needed a few 
       // cycles we could move this to init, the contents never change.
@@ -130,6 +132,7 @@ class Display {
       statusPacket.message.totalDischarge = logger->getDischarge();
       statusPacket.message.totalRegen = logger->getRegen();
       statusPacket.message.current = logger->getAvgCurrent(10);
+      statusPacket.message.lastWritten = (int)(logger->getLastWritten() / 1000);
 
       unsigned long start = millis();
       // OPTIMIZATION: don't send the text block (usually)
@@ -147,6 +150,10 @@ class Display {
       #endif
     } // update()
     
+    
+    void ping(void) {
+      xmit(statusPacket.bytes, 0);
+    }
     
     
 };

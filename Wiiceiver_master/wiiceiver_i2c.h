@@ -39,17 +39,19 @@
   #define WIICEIVER_I2C           53   // i2c slave address
 
   typedef struct StatusMessage_t {
-    float chuckY;
-    bool chuckC, chuckZ;
-    float peakDischarge;
-    float peakRegen;
-    float totalDischarge;
-    float totalRegen;
-    float current;
-    float throttle;
-    unsigned long uptime;
-    float history[3];
-    char text[4][18];
+    float chuckY;            // -1 .. 1
+    bool chuckC, chuckZ;     // up/down state
+    byte chuckCcounter, chuckZcounter;   // 0..250, #cycles since last change
+    float peakDischarge;     // Amps
+    float peakRegen;         // Amps
+    float totalDischarge;    // mAh
+    float totalRegen;        // mAh
+    float current;           // Amps
+    float throttle;          // -1 .. 1
+    int uptime;              // seconds
+    int lastWritten;         // seconds
+    float history[3];        // previous net discharge, mAh
+    char text[4][18];        // raw text fields
   }; 
   
   typedef union StatusPacket_t {

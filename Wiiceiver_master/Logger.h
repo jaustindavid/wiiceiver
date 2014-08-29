@@ -62,10 +62,10 @@
 
 // for bench testing, the FAKE_AMMETER will inject random data influenced by 
 // chuck Y position.
-// #define FAKE_AMMETER
+#define FAKE_AMMETER
 
 #ifdef FAKE_AMMETER
-#define analogRead(PIN) (random(20) * (1+Chuck::getInstance()->Y)+512)
+#define analogRead(PIN) ((100 * Chuck::getInstance()->Y)+512)
 #endif
 
 #define HISTORY 50         // save 50 previous rides (~upper limit at 1024 bytes EEPROM)
@@ -74,7 +74,7 @@
 class Logger {
 private:
   byte pin;
-  int zeroOffset, logEntryBlock;
+  int zeroOffset, logEntryBlock, discardCounter;
   StaticQueue <float> values;
   float current, history[3];
   unsigned long lastWritten;
@@ -164,6 +164,7 @@ private:
 #endif
     if (millis() - lastWritten > WRITE_PERIOD &&
       abs(current) < 1.5 && 
+      logEntry.totalDischarge > 50 &&
       abs(Chuck::getInstance()->Y) < THROTTLE_MIN) {
       Serial.print(F("Logger: saving ..."));
       unsigned long start = millis();
@@ -235,6 +236,12 @@ private:
     }
   } // buildHistory()
   
+  
+  // zero is a verb
+  void zeroLogEntry(void) {
+    memcpy(&logEntry, 0, sizeof(logEntry)); 
+  } // zeroLogEntry()
+
 
 public:
 
@@ -271,6 +278,9 @@ public:
 
         showLogHistory();
         buildHistory();
+        
+        memcpy(&logEntry, 0, sizeof(logEntry)); 
+        discardCounter = 0;
       }
     }
   } // init(pin)
@@ -285,14 +295,27 @@ public:
     Serial.print(F("Ammeter value: "));
     Serial.print(value);
     #endif
-
-    if ((value + zeroOffset) < 0 && (value + zeroOffset) > -3) {
+    
+    // sanity check 250 < value < 1023
+    if (250 > value || value > 1023) {
+      Serial.print("ZOMG: nonsensical ammeter reading: ");
+      Serial.println(value);
       current = 0;
-    } 
-    else {
+    } else if ((value + zeroOffset) < 0 && (value + zeroOffset) > -3) {
+      current = 0;
+    } else {
       #define VCC 5.0 // volts
       //  Current = ((analogRead(1)*(5.00/1024))- 2.5)/ .02;
       current = (((value + zeroOffset) * (VCC)/1024) - (VCC)/2) / 0.02;
+      // sanity check -10 < current < 100
+      
+      if (-10 > current || current > 100) {
+        Serial.print("ZOMG current is out of bounds; discarding: ");
+        Serial.println(current);
+        ++discardCounter;
+        // current = 0;
+        current = constrain(current, -10, 100);
+      }
     }
     values.enqueue(current);
     #ifdef DEBUGGING_LOGGER
@@ -302,9 +325,11 @@ public:
 
     float avgCurrent = values.sum() / TINYQUEUE_SIZE;
 
-    if (random(100) < 0) {
+    #ifdef NEVER_DO_THIS
+    if (random(100) > 99) {
       values.dump(Serial);
     }
+    #endif
 
     #ifdef DEBUGGING_LOGGER
     Serial.print(F("; 50mavg current = "));
@@ -315,7 +340,7 @@ public:
     logEntry.peakRegen = min(logEntry.peakRegen, avgCurrent);
 
     float mAh = current * 20 / 3600;  // amps * 20ms / 3600s/H
-
+    // sanity-check
     if (current > 0) {
       logEntry.totalDischarge += mAh;
     } 
@@ -367,6 +392,11 @@ public:
     return values.sum(n) / n;
   }
 
+  
+  unsigned long getLastWritten() {
+    return lastWritten;
+  }
+  
 
   // n = 0..2 returns one of the previous 3 rides
   float getNthRec(byte n) {

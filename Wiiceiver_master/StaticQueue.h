@@ -57,20 +57,32 @@ template <typename T>
 class StaticQueue {
     
   private:
-    int _head, _tail;
+    byte _head, _tail;
     T _sum;
     T _queue[TINYQUEUE_SIZE + 1]; 
 
 
     // helper function --- increment an index, wrap if needed
-    int increment(const int index) {
-      int ret = index + 1;
+    byte increment(const byte index) {
+      byte ret = index + 1;
       if (ret >= TINYQUEUE_SIZE) {
     	return 0;
       } else {
     	return ret;
       }
     } // increment
+    
+    
+    // opposite of increment
+    byte decrement(const byte index) {
+      byte ret = index - 1;
+      if (ret == 255) { // aka ret < 0
+        return TINYQUEUE_SIZE;
+      } else {
+        return ret;
+      }
+    } // byte decrement(index)
+    
 
   public:
 
@@ -119,7 +131,7 @@ class StaticQueue {
       } else {
         return NULL;
       }
-    } // int dequeue()
+    } // T dequeue()
     
     
     // returns true if the queue isEmpty
@@ -128,40 +140,53 @@ class StaticQueue {
     } // boolean Queue::isEmpty()
     
     
+    // returns a sum of elements
+    // fast
     T sum(void) {
       return _sum;
-    } // int StaticQueue::sum()
+    } // T sum()
     
     
-    T sum(byte count) {
+    // adds the most-recent count elemets
+    // compute-intense, but memory-light
+    T sum(byte count) { 
       T tmpSum = 0;
-      byte index = _head;
       
-      for (byte i = 0; i < count && index != _tail; i++) {
+      if (isEmpty()) {
+        return tmpSum;
+      }
+      
+      byte index = decrement(_tail);
+      byte i = 0;
+      
+      while (i < count) {
         tmpSum += _queue[index];
-        index = increment(index);
+        if (index == _head) {
+          break;
+        }
+        i++;
+        index = decrement(index);
       }
       
       return tmpSum;
-    }
+    } // T sum(count)
     
     
     // dumps the queue contents to Serial (or whatever Print class)
     void dump(Print & printer) {
       printer.print("head = "); printer.print(_head);
       printer.print(", tail = "); printer.println(_tail);
-      if (! isEmpty()) {
-    	int i = _head;
-    	while (i != _tail) {
-          if (i >= TINYQUEUE_SIZE) {
-    		i = 0;
-    	  } // wraparound?
-    	  printer.print(i); 
-          printer.print(":");
-          printer.println(_queue[i]);  
-    	  i++;
-    	}	
-      } // not empty
+      for (byte i = 0; i <= TINYQUEUE_SIZE; i++) {
+        printer.print(i);
+        printer.print(": ");
+        printer.print(_queue[i]);
+        if (i == _head) {
+          printer.print(" <- head");
+        } else if (i == _tail) {
+          printer.print(" <- tail");
+        }
+        printer.println();
+      }
     } // StaticQueue::dump()
 
 

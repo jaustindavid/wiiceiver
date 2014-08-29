@@ -76,6 +76,7 @@ private:
 public:
   float X, Y;
   bool C, Z;
+  byte cCounter, zCounter;
 
 
 private:
@@ -153,9 +154,25 @@ private:
       Y = -1.0 * centeredY / (Ymin - Y0); 
     }
 
+    bool prev = C;
     C = ((status[5] & B00000010) >> 1) == 0;
+    if (C == prev) {
+      if (cCounter < 250) {
+        cCounter ++;
+      }
+    } else {
+      cCounter = 0; 
+    }
     
+    prev = Z;
     Z = (status[5] & B00000001) == 0;
+    if (Z == prev) {
+      if (zCounter < 250) {
+        zCounter ++;
+      }
+    } else {
+      zCounter = 0; 
+    }
 
     if (!statusChanged()) { 
       if (activitySamenessCount < WII_ACTIVITY_COUNTER) {
@@ -249,6 +266,7 @@ public:
     X0 = Y0 = 128;
     Xmin = Ymin = 15;
     Xmax = Ymax = 200;
+    cCounter = zCounter = 0;
 
 #ifdef DEBUGGING_CHUCK
     Serial.print(millis());

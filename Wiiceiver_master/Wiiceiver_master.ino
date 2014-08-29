@@ -235,7 +235,7 @@ void freakOut(void) {
 #endif
 
   #ifdef DISPLAY_H
-  display->printMessage("NO SIGNAL", "", "Lost signal", "from nunchuck");
+  display->printMessage("NO CHUCK!", "", "Lost signal", "from nunchuck");
   #endif
   red.stop();
   green.stop();
@@ -258,6 +258,9 @@ void freakOut(void) {
     chuck->update();
     delay(20);
     wdt_reset();
+    #ifdef DISPLAY_H
+    display->update();
+    #endif
   }
   green.start(1);
   red.start(1);
@@ -294,6 +297,9 @@ bool waitForActivity(void) {
     wdt_reset();
     delay(20);
     chuck->update();
+    #ifdef DISPLAY_H
+    display->update();
+    #endif
   }
 
   #ifdef DEBUGGING
@@ -331,7 +337,7 @@ bool startChuck() {
     Serial.print(F("(Re)starting the nunchuck: #"));
     Serial.println(tries);
     #endif
-  
+      
     wdt_reset();
     chuck->setup();
     chuck->readEEPROM();
@@ -362,6 +368,9 @@ void handleInactivity() {
       // stopChuck();
       // delay(250);
       startChuck();
+      #ifdef DISPLAY_H
+      display->update();
+      #endif
     }
   } while (! chuck->isActive());
   
@@ -378,6 +387,9 @@ void handleInactivity() {
   while (abs(chuck->Y) > 0.1) {
     chuck->update();
     wdt_reset();
+    #ifdef DISPLAY_H
+    display->update();
+    #endif
     delay(20);
   }
   
@@ -416,6 +428,15 @@ void setup() {
 
   setup_pins();
   
+  #ifdef DISPLAY_H
+  #ifdef DEBUGGING
+  Serial.println(F("Loading Display..."));
+  #endif
+  display = Display::getInstance();
+  display->init();
+  #endif  
+
+  
   #ifdef DEBUGGING
   Serial.println(F("Starting ESC..."));
   #endif
@@ -451,14 +472,17 @@ void setup() {
   Serial.println(F("Throttle is active!"));
   #endif
 
+
   #ifdef DISPLAY_H
+  /*
   #ifdef DEBUGGING
   Serial.println(F("Loading Display..."));
   #endif
   display = Display::getInstance();
   display->init();
+  */
+  display->splashScreen();
   #endif  
-
 
   green.start(10);
   red.start(10);

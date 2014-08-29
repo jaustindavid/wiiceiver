@@ -32,6 +32,8 @@
 
 #include "utils.h"
 
+    #define MASTER_TIMEOUT 2000 // 2 secs
+
     Timer displayTimer(5000);
     
     #define DISP_STATUS       0
@@ -46,8 +48,6 @@
     byte screen, prevScreen, nextScreen = NO_SCREEN;
     
     StatusPacket_t statusPacket;
-    
-    unsigned long lastUpdate;
 
   
   void justify(byte width, float value, byte decimals) {
@@ -94,11 +94,24 @@
 
     void splashScreen(void) {
       display.clearDisplay();
-      display.setTextColor(WHITE);
-      display.setCursor(0,0);
-      display.setTextSize(2);
-      display.println(F("Wiiceiver"));
-      display.println(F(" Display!"));      
+      display.setCursor(0,0);    
+      if ((millis() - lastContact) > MASTER_TIMEOUT) {
+        display.setTextSize(2);
+        display.setTextColor(BLACK, WHITE); // 'inverted' text
+        display.println(F("No signal!"));
+        display.setCursor(0, 16);
+        display.setTextSize(1);
+        display.println(F("Lost connection :("));
+        display.setTextColor(WHITE);
+        display.print("last msg: ");
+        display.print((int)((millis() - lastContact)/1000));
+        display.println(F(" secs ago"));
+      } else {
+        display.setTextSize(2);
+        display.setTextColor(WHITE);
+        display.println(F("Wiiceiver"));
+        display.println(F(" Display!"));      
+      }
       display.setTextSize(1);
       display.print(F("head v"));
       display.println(F(WIICEIVER_HEAD_VERSION));
@@ -111,7 +124,49 @@
     }    
 
 
+    // E [###########______] F 
+    void showFuelGauge(void) {
+      #define PACK_CAPACITY  9000 // mAh
+      float fuelLevel = (PACK_CAPACITY
+                         - (statusPacket.message.totalDischarge 
+                          - statusPacket.message.totalRegen))
+                       / PACK_CAPACITY;
+      fuelLevel = constrain(fuelLevel, 0.0, 1.0);
 
+      #define SFG_LETTER_H   14   // E / F size, pixels
+      #define SFG_LETTER_W   5    // E / F height, pixels
+      #define SFG_LETTER_SPC 2    // space between letters, pixels
+      #define SFG_LEFT       0
+      #define SFG_RIGHT      127
+      #define SFG_TOP        0
+      #define SFG_BOTTOM     SFG_TOP + SFG_LETTER_H
+
+      // fullness
+      #define SFG_LEFT_BORDER (SFG_LEFT + SFG_LETTER_W + SFG_LETTER_SPC)
+      #define SFG_RIGHT_BORDER (SFG_RIGHT - (SFG_LETTER_W + SFG_LETTER_SPC))
+      byte rightEdge = (byte) (fuelLevel * (SFG_RIGHT - SFG_LEFT) 
+                                 + SFG_LEFT);
+      display.fillRect(SFG_LEFT, SFG_TOP, 
+                       rightEdge, SFG_BOTTOM, 
+                       WHITE);
+      // ticks @ 25, 50, 75%
+      for (byte i = 1; i < 8; i++) {
+        byte x = (byte)(1.0 * i/8 * (SFG_RIGHT - SFG_LEFT) 
+                                   + SFG_LEFT);
+        byte top = SFG_TOP;
+        if (i % 2 != 0) {
+          top = SFG_TOP + (SFG_BOTTOM - SFG_TOP)/2;
+        }
+        display.drawLine( x, top, x, SFG_BOTTOM - 1, 
+                         (x > rightEdge ? WHITE : BLACK));
+      }
+      
+      // frame          
+      display.drawRect(SFG_LEFT, SFG_TOP, 
+                       SFG_RIGHT, SFG_BOTTOM, 
+                       WHITE);
+     } // showFueldGauge()
+    
     
     void printCurrent(void) {
       display.clearDisplay();
@@ -140,7 +195,12 @@
       display.setTextColor(WHITE);
       display.setCursor(0,0);
       display.setTextSize(2);
-      display.println(F("Discharge"));
+      if (! displayTimer.isExpired()) {
+        display.print(F("Discharge"));
+      } else {
+        showFuelGauge();
+      }
+      display.println();
       display.setTextSize(1);
       display.print(F("Peak draw: "));
       display.print(statusPacket.message.peakDischarge, 1);
@@ -148,7 +208,7 @@
       
       display.setTextSize(4);
       display.setCursor(0, 32);
-      justify(5, statusPacket.message.totalDischarge - statusPacket.message.totalRegen, 1);
+      justify(5, statusPacket.message.totalDischarge - statusPacket.message.totalRegen, 0);
 
       display.display();
     } // printDischarge()
@@ -181,14 +241,26 @@
       display.setTextColor(WHITE);
       display.setCursor(0,0);
       display.setTextSize(2);
-      display.println(F("History"));
+      if (! displayTimer.isExpired()) {
+        display.println(F("History"));
+      } else {
+        if (statusPacket.message.lastWritten) {
+          display.print(F("Last: "));
+          display.println(statusPacket.message.uptime
+                        - statusPacket.message.lastWritten);
+        } else {
+          display.println(F("Not saved"));
+        }
+      }
       display.setTextSize(2);
       for (int i = 2; i >= 0; i--) {
-        //display.print(i);
-        display.print(F(":"));
+        display.print(i);
+        display.print(F(": "));
         justify(5, statusPacket.message.history[i], 0);
-        display.println(F("mAh"));
+        display.println();
       }
+      
+      // showFuelGauge();
       display.display();
     } // printHistory()
     
@@ -242,33 +314,41 @@
     } // printMessage(buffer)
     
     
-    void update(void) {
+    void update(void) {      
       static boolean zPrev = false;
-      
+      if ((millis() - lastContact) > MASTER_TIMEOUT) {
+        splashScreen();
+        return;
+      }
       if (! lock) {
         return;
       }
       
       lock = 0;
       statusPacket = statusPacketBuffer;
+      // memcopy(&statusPacketBuffer, &statusPacket, sizeof(statusPacketBuffer));
       #ifdef DEBUGGING_I2C
       Serial.print(F("from buffer: "));
       Serial.println(statusPacket.message.uptime);
       #endif
       
       if (lastByte > (sizeof(statusPacket.bytes) - sizeof(statusPacket.message.text))) {
+        // sorta a hack; if text was sent, switch to the text screen.
         nextScreen = screen;
         screen = DISP_MESSAGE;
         lastMessage = millis();
+        displayTimer.reset();
       } else {
-        if (statusPacket.message.chuckZ && ! zPrev &&
+        if (! statusPacket.message.chuckZ && zPrev &&
             abs(statusPacket.message.chuckY) < 0.25) {
+          // release Z (Z from ON -> OFF) & no significant Y axis...
           #ifdef DEBUGGING
           Serial.print(F("screen = "));
           Serial.print(screen);
           Serial.print(F("; prev = "));
           Serial.println(prevScreen);
           #endif
+          displayTimer.reset();
           if (nextScreen != NO_SCREEN) {
             #ifdef DEBUGGING
             Serial.println(F("returning to next screen"));
@@ -321,7 +401,6 @@
       Serial.print(millis() - startMS);
       Serial.println(F("ms"));
       #endif
-      lastUpdate = millis();
     } // update()
     
 

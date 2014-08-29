@@ -64,7 +64,7 @@ Adafruit_SSD1306 display(OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
 #define DEBUGGING
 // #define DEBUGGING_I2C
 
-#define WIICEIVER_HEAD_VERSION "0.1"
+#define WIICEIVER_HEAD_VERSION "0.5 alpha"
 // addys for vars stored in EEPROM
 #define EEPROM_Y_ADDY            0
 #define EEPROM_AUTOCRUISE_ADDY   1
