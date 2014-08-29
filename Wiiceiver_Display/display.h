@@ -284,7 +284,7 @@
       display.setTextSize(1);
       display.setCursor(0,48);
       display.print(F("Uptime: "));
-      display.print(statusPacket.message.uptime / 1000);
+      display.print(statusPacket.message.uptime);
       display.println(F("s"));
       #ifdef DEBUGGING
       #ifdef MEMORY_FREE_H
