@@ -45,7 +45,7 @@ BSD license, check license.txt for more information
 All text above, and the splash screen must be included in any redistribution
 *********************************************************************/
 
-#include <avr/wdt.h> 
+// #include <avr/wdt.h> 
 #include <SPI.h>
 #include <Wire.h>
 #include <EEPROM.h>
@@ -98,11 +98,13 @@ Timer memTimer(10000);
  *
  ********/
  
+
 /*
  * setup a watchdog timer for the given reset interval
  *
  * constants: WDTO_250MS, WDTO_8S, WDTO_60MS, etc
  */
+ /*
 void watchdog_setup(byte wd_interval) {
   wdt_reset();
   wdt_enable(wd_interval);
@@ -117,7 +119,7 @@ ISR(WDT_vect) {
   byte wdt_counter = EEPROM.read(EEPROM_WDC_ADDY);
   EEPROM.write(EEPROM_WDC_ADDY, wdt_counter + 1);
 } // ISR for the watchdog timer
-
+*/
 
 
 // display the current value of the watchdog counter
@@ -130,12 +132,12 @@ void display_WDC(void) {
 
 
 void setup()   {
-  wdt_disable();
+  // wdt_disable();
   Serial.begin(115200);
   
   Serial.print(F("Starting Wiiceiver Head v"));
   Serial.println(F(WIICEIVER_HEAD_VERSION));
-  
+
   // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
   display.begin(SSD1306_SWITCHCAPVCC);
   
@@ -156,12 +158,12 @@ void setup()   {
   Serial.println(freeMemory());
   #endif  
   
-  watchdog_setup(WDTO_250MS);
+  // watchdog_setup(WDTO_250MS);
 }
 
 
 void loop() {
-  wdt_reset();
+  // wdt_reset();
   update();
   
   #ifdef MEMORY_FREE_H

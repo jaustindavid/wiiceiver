@@ -41,7 +41,7 @@
 
 // #define DEBUGGING_THROTTLE
 #define THROTTLE_MIN 0.05                      // the lowest throttle to send the ESC
-#define THROTTLE_MIN_CC 0.25                   // the minimum stick input considered during cruise
+#define THROTTLE_MIN_CC_STICK 0.25             // the minimum stick input considered during cruise
 #define THROTTLE_CC_BUMP 0.003                 // CC = 0.2% throttle increase; 50/s = 10s to hit 100% on cruise
 #define THROTTLE_Z_BUMP (THROTTLE_CC_BUMP * 2) // Z button == 2x CC bump 
 #define THROTTLE_MIN_CC 0.05                   // minimum / inital speed for cruise crontrol
@@ -62,16 +62,22 @@ class Throttle {
     
     void readAutoCruise(void) {
       byte storedValue = EEPROM.read(EEPROM_AUTOCRUISE_ADDY);
+      #ifdef DEBUGGING_THROTTLE
       Serial.print(F("Read autoCruise from EEPROM: "));
       Serial.print(storedValue);
+      #endif
 
       if (storedValue > 0 && storedValue < 100) {
         autoCruise = 0.01 * storedValue;
+        #ifdef DEBUGGING_THROTTLE
         Serial.print(F("; setting autoCruise = "));
         Serial.println(autoCruise);
+        #endif
       } else {
+        #ifdef DEBUGGING_THROTTLE
         Serial.print(F("; ignoring, leaving autoCruise = "));
         Serial.println(autoCruise);
+        #endif
       }
     } // float readAutoCruise(void) 
     
@@ -105,9 +111,9 @@ class Throttle {
         xCounter = 0;
         return false;
       }
-      if (millis() < 120 * 1000 &&
+      if (millis()/1000 < 120 &&
           chuck->Z &&
-          abs(chuck->Y) < THROTTLE_MIN_CC && 
+          abs(chuck->Y) < THROTTLE_MIN_CC_STICK && 
           abs(chuck->X) > 0.75) {
             
         ++xCounter;

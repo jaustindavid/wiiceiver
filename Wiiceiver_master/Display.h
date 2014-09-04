@@ -64,7 +64,15 @@ class Display {
   
   Display(Display const&);
   void operator=(Display const&);
-  
+
+/*
+  void fakeprint(const char* buffer, byte value) {
+    buffer = (char)(value / 100 + "0");
+    value %= 10;
+    buffer[1] = value / 10 + "0";
+    buffer[2] = value % 10 + "0";
+  }
+*/
 
   public:
   
@@ -84,27 +92,32 @@ class Display {
 
     // sends a "splash screen" to the display
     void splashScreen(void) {
-      // #ifdef DEBUGGING
+      #ifdef DEBUGGING
       Serial.println(F("sending info screen"));
-      // #endif
-      snprintf(statusPacket.message.text[0], 18, "Wiiceiver!");
-      snprintf(statusPacket.message.text[1], 18, "v %s", WIICEIVER_VERSION);
-      snprintf(statusPacket.message.text[2], 18, "WDT Resets: %d", (byte)(EEPROM.read(EEPROM_WDC_ADDY) + 1));
-      statusPacket.message.text[3][0] = '\0'; 
+      #endif
+      
+      memcpy(statusPacket.message.text, WIICEIVER_VERSION, 10);
+      statusPacket.message.watchdogResets = (byte)(EEPROM.read(EEPROM_WDC_ADDY) + 1);
+      statusPacket.message.messageID = MSG_STARTUP;
       xmit(statusPacket.bytes, sizeof(statusPacket.bytes));
 
       #ifdef DEBUGGING
-      Serial.print("sent ");
+      Serial.print(F("sent "));
       Serial.println(sizeof(statusPacket.bytes));
       #endif
     } // splashScreen()
 
+
+    void printMessage(byte messageID) {
+      statusPacket.message.messageID = messageID;
+      xmit(statusPacket.bytes, sizeof(statusPacket.bytes) - 
+                               sizeof(statusPacket.message.text));
+    }
+
     
-    void printMessage(const char* line1, const char* line2, const char* line3, const char* line4) {
-      strncpy(statusPacket.message.text[0], line1, 18);
-      strncpy(statusPacket.message.text[1], line2, 18);
-      strncpy(statusPacket.message.text[2], line3, 18);
-      strncpy(statusPacket.message.text[3], line4, 18);
+    void printMessage(byte messageID, const char* text) {
+      statusPacket.message.messageID = messageID;
+      strncpy(statusPacket.message.text, text, 18);
       xmit(statusPacket.bytes, sizeof(statusPacket.bytes));
     }
 
@@ -125,8 +138,14 @@ class Display {
       // our compute budget has a lot of overhead; if we needed a few 
       // cycles we could move this to init, the contents never change.
       for (byte i = 0; i < 3; i ++) {
-        statusPacket.message.history[i] = logger->getNthRec(i);
+        statusPacket.message.cHistory[i] = logger->getNthCRec(i);
+        statusPacket.message.vHistory[i] = logger->getNthVRec(i);
       }
+      
+      statusPacket.message.startVoltage = logger->getStartVoltage();
+      statusPacket.message.voltage = logger->getVoltage();
+      statusPacket.message.minVoltage = logger->getMinVoltage();      
+      
       statusPacket.message.peakDischarge = logger->getPeakDischarge();
       statusPacket.message.peakRegen = logger->getPeakRegen();
       statusPacket.message.totalDischarge = logger->getDischarge();
@@ -134,19 +153,27 @@ class Display {
       statusPacket.message.current = logger->getAvgCurrent(10);
       statusPacket.message.lastWritten = (int)(logger->getLastWritten() / 1000);
 
+      #ifdef DEBUGGING_DISPLAY
       unsigned long start = millis();
+      #endif
+      
       // OPTIMIZATION: don't send the text block (usually)
       // the display will flash the text screen if we send it, so 
       // usually we don't. printmsg(buffer, buffer, buffer, buffer) will do it
-      xmit(statusPacket.bytes, sizeof(statusPacket.bytes) - 
-                               sizeof(statusPacket.message.text));
+      xmit(statusPacket.bytes, sizeof(statusPacket.bytes)
+                             - sizeof(statusPacket.message.cHistory)
+                             - sizeof(statusPacket.message.vHistory)
+                             - sizeof(statusPacket.message.watchdogResets)
+                             - sizeof(statusPacket.message.messageID)
+                             - sizeof(statusPacket.message.text));
+
 
       #ifdef DEBUGGING_DISPLAY
-      Serial.print("Transmitted ");
+      Serial.print(F("Transmitted "));
       Serial.print(sizeof(statusPacket));
-      Serial.print(" bytes in ");
+      Serial.print(F(" bytes in "));
       Serial.print(millis() - start);
-      Serial.println("ms");
+      Serial.println(F("ms"));
       #endif
     } // update()
     

@@ -6,15 +6,17 @@
  * do in a working wiiceiver, but it might help troubleshooting in 
  * specific cases.
  *
+ * This also wipes out any saved history (all 1024 byets of flash)
+ *
  * To reset a wiiceiver the easy way:
  * 1) start it and hold C; count to 10
- * 2) hold down until the wheels stop, then all the way right for 5 secs
+ * 2) hold C+Z+down until the wheels stop, then C+Z+right for 5 secs
  * 
  * This will re-calibrate the nunchuck stick, and set auto-cruise to 0
  *
  * If for whatever reason you want to do the hard way:
  * 1) upload this to your wiiceiver
- * 2) observe both red & green LEDs lot solid
+ * 2) observe both red & green LEDs lit solid
  * 3) upload the wiiceiver code
  * 4) observe wiiceiver acting like a "new" device, with
  *    default settings for the joystick calibration and auto-cruise
@@ -41,7 +43,7 @@ boolean fixValue(int address, byte desiredValue) {
 void setup() {
   Serial.begin(115200);
 
-  for (int addy = 0; addy <= 2; addy ++) {
+  for (int addy = 0; addy < 3; addy ++) {
     if (fixValue(addy, 255)) {
       Serial.print("fixed address #");
       Serial.println(addy);

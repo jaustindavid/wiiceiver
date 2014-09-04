@@ -144,7 +144,7 @@ void setLevel(float level) {
 private:
 
 #define STEP_DELAY 20
-#define SYNC_LIMIT 0.6
+#define SYNC_LIMIT 1.0
 
   void sweep(float startLevel, float endLevel, float step) {
 #ifdef DEBUGGING_ESC
@@ -165,7 +165,23 @@ private:
   
   // startup sequence: some small range of inputs, then idle
   void syncESC(void) {
-/*    
+    setLevel(0);
+    delay(100);
+    setLevel(1);
+    delay(50);
+    setLevel(-1);
+    delay(50);
+    setLevel(0);
+    delay(500);
+    return;
+    sweep(0, SYNC_LIMIT, SYNC_LIMIT/5);
+    delay(100);
+    sweep(SYNC_LIMIT, -SYNC_LIMIT, -SYNC_LIMIT/5);
+    delay(100);
+    sweep(-SYNC_LIMIT, 0, SYNC_LIMIT/5);
+    delay(500);
+    return;
+    /*    
     sweep(0, SYNC_LIMIT, SYNC_LIMIT/2);
     delay(500);
     sweep(SYNC_LIMIT, -SYNC_LIMIT, -SYNC_LIMIT/2);

@@ -26,34 +26,40 @@
  * 12 May 2014
  *
  */
- 
-#include <stdlib.h>
+
+#include <Arduino.h>
+
+#ifdef USE_WATCHDOG
 #include <avr/wdt.h> 
+#endif
+
 #include <Wire.h>
 #include <Servo.h>
 #include <EEPROM.h>
-#include "MemoryFree.h"
+// #include "MemoryFree.h"
 
 
-#define WIICEIVER_VERSION "1.5.1 exp"
+#define WIICEIVER_VERSION "1.6.0 exp"
 
 // addys for vars stored in EEPROM
 #define EEPROM_Y_ADDY            0
 #define EEPROM_AUTOCRUISE_ADDY   1
 #define EEPROM_WDC_ADDY          2
+#define EEPROM_LOGGER_VERSION    15
 #define EEPROM_LOGGER_ADDY       16
 
-// #define DEBUGGING
+#define DEBUGGING
 
+#include <Arduino.h>
+#include "pinouts.h"
 #include "Blinker.h"
 #include "Chuck.h"
 #include "ElectronicSpeedController.h"
 #include "Smoother.h"
 #include "Throttle.h"
-#include "StaticQueue.h"
 #include "EEPROMAnything.h"
 #include "Logger.h"
-#include "pinouts.h"
+#include "StaticQueue.h"
 
 
 /********
@@ -87,6 +93,8 @@ Display* display;
 Timer memTimer;
 #endif
 
+
+#ifdef USE_WATCHDOG
 
 /********
  *  WATCHDOG STUFF
@@ -126,7 +134,7 @@ void display_WDC(void) {
   Serial.println((byte)(wdt_counter + 1));
 } // display_WDC()
 
-
+#endif
 
 // maybe calibrate the joystick:
 //   read the C button 250 times, once per 20ms (5s total); if it's constantly
@@ -141,7 +149,7 @@ void maybeCalibrate(void) {
   }
 
   #ifdef DISPLAY_H
-  display->printMessage("Calibrate: ", "Hold C ...", "", "");
+  display->printMessage(MSG_CALIBRATION_1);
   #endif
   red.update(10);
   green.update(10);
@@ -166,11 +174,11 @@ void maybeCalibrate(void) {
     EEPROM.write(EEPROM_WDC_ADDY, 255);
     Serial.println(F("Calibrated"));
     #ifdef DISPLAY_H
-    display->printMessage("Calibrated", "", "", "");
+    display->printMessage(MSG_CALIBRATION_2);
     #endif
   } else {
     #ifdef DISPLAY_H
-    display->printMessage("Cancelled", "", "not recalibrated", "");
+    display->printMessage(MSG_CALIBRATION_3);
     #endif
     
   }
@@ -235,7 +243,8 @@ void freakOut(void) {
 #endif
 
   #ifdef DISPLAY_H
-  display->printMessage("NO CHUCK!", "", "Lost signal", "from nunchuck");
+  // display->printMessage("NO CHUCK!", "", "Lost signal", "from nunchuck");
+  display->printMessage(MSG_CHUCK_1);
   #endif
   red.stop();
   green.stop();
@@ -257,7 +266,11 @@ void freakOut(void) {
     blinkCtr ++;
     chuck->update();
     delay(20);
+    
+    #ifdef USE_WATCHDOG
     wdt_reset();
+    #endif
+    
     #ifdef DISPLAY_H
     display->update();
     #endif
@@ -294,7 +307,11 @@ bool waitForActivity(void) {
   
   chuck->update();
   while (! chuck->isActive() && timer > millis()) {
+
+    #ifdef USE_WATCHDOG
     wdt_reset();
+    #endif
+    
     delay(20);
     chuck->update();
     #ifdef DISPLAY_H
@@ -337,8 +354,11 @@ bool startChuck() {
     Serial.print(F("(Re)starting the nunchuck: #"));
     Serial.println(tries);
     #endif
-      
+    
+    #ifdef USE_WATCHDOG
     wdt_reset();
+    #endif
+
     chuck->setup();
     chuck->readEEPROM();
     tries ++;
@@ -352,7 +372,10 @@ bool startChuck() {
 
 // pretty much what it sounds like
 void handleInactivity() {
+  #ifdef USE_WATCHDOG
   watchdog_setup(WDTO_8S);  // some long-cycle stuff happens here
+  #endif
+  
   #ifdef DEBUGGING
   Serial.print(millis());
   Serial.println(": handling inactivity");
@@ -381,12 +404,16 @@ void handleInactivity() {
   #endif  
 
   #ifdef DISPLAY_H  
-  display->printMessage("WAITING...", "", "Return stick", "to center");
+  // display->printMessage("WAITING...", "", "Return stick", "to center");
+  display->printMessage(MSG_CHUCK_2);
   #endif
   
   while (abs(chuck->Y) > 0.1) {
     chuck->update();
+    
+    #ifdef USE_WATCHDOG
     wdt_reset();
+    #endif
     #ifdef DISPLAY_H
     display->update();
     #endif
@@ -395,21 +422,27 @@ void handleInactivity() {
   
   #ifdef DEBUGGING
   Serial.print(millis());
-  Serial.println(": finished inactivity -- chuck is active");
+  Serial.println(F(": finished inactivity -- chuck is active"));
   #endif
 
   #ifdef DISPLAY_H
-  display->printMessage("Active!", "", "Resuming", "operation");
+  // display->printMessage("Active!", "", "Resuming", "operation");
+  display->printMessage(MSG_CHUCK_3);
   #endif
   
+  #ifdef USE_WATCHDOG
   watchdog_setup(WDTO_250MS);
+  #endif
 } // handleInactivity()
 
 
 
 
 void setup() {
+  #ifdef USE_WATCHDOG
   wdt_disable();
+  #endif
+  
   Serial.begin(115200);
 
   Serial.print(F("Wiiceiver Master v "));
@@ -420,13 +453,20 @@ void setup() {
   Serial.print(F(__TIME__));
   Serial.println(F(")"));
 
-  
+  #ifdef USE_WATCHDOG
   display_WDC();
+  #endif
 
   green.init(pinLocation(GREEN_LED_ID));
   red.init(pinLocation(RED_LED_ID));
-
+  red.high();
   setup_pins();
+ 
+  #ifdef MEMORY_FREE_H
+  Serial.print(F("free memory: "));
+  Serial.println(freeMemory());
+  #endif
+
   
   #ifdef DISPLAY_H
   #ifdef DEBUGGING
@@ -436,6 +476,11 @@ void setup() {
   display->init();
   #endif  
 
+  #ifdef MEMORY_FREE_H
+  Serial.print(F("free memory: "));
+  Serial.println(freeMemory());
+  #endif
+
   
   #ifdef DEBUGGING
   Serial.println(F("Starting ESC..."));
@@ -443,11 +488,23 @@ void setup() {
   ESC = ElectronicSpeedController::getInstance();
   ESC->init(pinLocation(ESC_PPM_ID));
 
+  #ifdef MEMORY_FREE_H
+  Serial.print("free memory: ");
+  Serial.println(freeMemory());
+  #endif
+
+
   #ifdef DEBUGGING
   Serial.println(F("Starting Logger..."));
   #endif  
   logger = Logger::getInstance();
-  logger->init(pinLocation(AMMETER_ID));
+  logger->init();
+
+  #ifdef MEMORY_FREE_H
+  Serial.print(F("free memory: "));
+  Serial.println(freeMemory());
+  #endif
+
   
   splashScreen();
     
@@ -474,13 +531,10 @@ void setup() {
 
 
   #ifdef DISPLAY_H
-  /*
   #ifdef DEBUGGING
-  Serial.println(F("Loading Display..."));
+  Serial.println(F("Priming Display..."));
   #endif
-  display = Display::getInstance();
-  display->init();
-  */
+  display->update();
   display->splashScreen();
   #endif  
 
@@ -489,8 +543,10 @@ void setup() {
   
   green.update(1);
   red.update(1);  
-    
+  
+  #ifdef USE_WATCHDOG
   watchdog_setup(WDTO_250MS);
+  #endif
 } // void setup()
 
 
@@ -498,7 +554,11 @@ void setup() {
 void loop() {
   static float lastThrottleValue = 0;
   unsigned long startMS = millis();
+  
+  #ifdef USE_WATCHDOG
   wdt_reset();
+  #endif
+  
   green.run();
   red.run();
   chuck->update();

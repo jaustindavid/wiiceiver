@@ -52,19 +52,19 @@ class Smoother {
       float step = (target - value) * factor;
       
 #ifdef DEBUGGING_SMOOTHER
-      Serial.print("Target: ");
+      Serial.print(F("Target: "));
       Serial.print(target, 4);
-      Serial.print(", Factor: ");
+      Serial.print(F(", Factor: "));
       Serial.print(factor, 4);
-      Serial.print(", Value: ");
+      Serial.print(F(", Value: "));
       Serial.print(value, 4);      
-      Serial.print(", Step: ");
+      Serial.print(F(", Step: "));
       Serial.print(step, 4);
 #endif
 
       if (abs(step) < SMOOTHER_MIN_STEP) {
 #ifdef DEBUGGING_SMOOTHER
-      Serial.print(" BUMP");
+      Serial.print(F(" BUMP"));
 #endif
         value = target;
       } else {
@@ -72,7 +72,7 @@ class Smoother {
       }      
       // value = (float)round(value * 10000) / 10000.0;
 #ifdef DEBUGGING_SMOOTHER
-      Serial.print(", result ");
+      Serial.print(F(", result "));
       Serial.println(value, 4);
 #endif
       return value;
@@ -103,11 +103,11 @@ class Smoother {
       float returnValue = target;
 
 #ifdef DEBUGGING_SMOOTHER
-      Serial.print("Adap2ive: program #");
+      Serial.print(F("Adap2ive: program #"));
       Serial.print(program);
-      Serial.print("; target = ");
+      Serial.print(F("; target = "));
       Serial.print(target, 4);
-      Serial.print(", ceiling: ");
+      Serial.print(F(", ceiling: "));
       Serial.print(ceiling, 4);
 #endif
 
@@ -130,16 +130,16 @@ class Smoother {
       ceiling = max(ceiling, 0.2);
 
 #ifdef DEBUGGING_SMOOTHER
-      Serial.print(", next: ");
+      Serial.print(F(", next: "));
       Serial.print(returnValue);
-      Serial.print(", new ceiling: ");
+      Serial.print(F(", new ceiling: "));
       Serial.print(ceiling, 4);
 #endif
 
       returnValue = compute(returnValue, programMap[program][SMOOTHNESS]);
 
 #ifdef DEBUGGING_SMOOTHER
-      Serial.print(", returning: ");
+      Serial.print(F(", returning: "));
       Serial.println(returnValue, 4);
 #endif
 

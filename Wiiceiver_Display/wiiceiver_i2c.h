@@ -38,10 +38,22 @@
 
   #define WIICEIVER_I2C           53   // i2c slave address
 
-  typedef struct StatusMessage_t {
+  #define MSG_NOMESSAGE           00
+  #define MSG_STARTUP             01
+  #define MSG_CALIBRATION_1       10
+  #define MSG_CALIBRATION_2       11
+  #define MSG_CALIBRATION_3       12
+  #define MSG_CHUCK_1             15
+  #define MSG_CHUCK_2             16
+  #define MSG_CHUCK_3             17
+
+  struct StatusMessage_t {
     float chuckY;            // -1 .. 1
     bool chuckC, chuckZ;     // up/down state
     byte chuckCcounter, chuckZcounter;   // 0..250, #cycles since last change
+    float startVoltage;      // Volts
+    float voltage;           // Volts
+    float minVoltage;        // Volts
     float peakDischarge;     // Amps
     float peakRegen;         // Amps
     float totalDischarge;    // mAh
@@ -50,8 +62,11 @@
     float throttle;          // -1 .. 1
     int uptime;              // seconds
     int lastWritten;         // seconds
-    float history[3];        // previous net discharge, mAh
-    char text[4][18];        // raw text fields
+    byte watchdogResets;     // WDT counter
+    float cHistory[3];       // previous net discharge, mAh
+    float vHistory[3];       // previous min voltage, V
+    byte messageID;          // message ID
+    char text[10];           // custom text string
   }; 
   
 

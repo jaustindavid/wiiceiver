@@ -38,14 +38,16 @@
     
     #define DISP_STATUS       0
     #define DISP_CURRENT      1
-    #define DISP_DISCHARGE    2
-    #define DISP_REGEN        3
-    #define DISP_HISTORY      4
-    #define DISP_MESSAGE      5
-    #define DISP_SPLASH       6    
-    #define DISP_NUMSCREENS   7
+    #define DISP_VOLTAGE      2
+    #define DISP_DISCHARGE    3
+    #define DISP_REGEN        4
+    #define DISP_HISTORY      5
+    #define DISP_MESSAGE      6
+    #define DISP_SPLASH       7    
+    #define DISP_NUMSCREENS   8
     #define NO_SCREEN         99   // not a screen
     byte screen, prevScreen, nextScreen = NO_SCREEN;
+    byte lastMessageID = MSG_NOMESSAGE;
     
     StatusPacket_t statusPacket;
 
@@ -173,8 +175,12 @@
       display.setTextColor(WHITE);
       display.setCursor(0,0);
       display.setTextSize(2);
-      display.println(F("Current"));
-      
+      if (! displayTimer.isExpired()) {
+        display.print(F("Current"));
+      } else {
+        showFuelGauge();
+      }
+      display.println();
       display.setTextSize(1);
       display.print(F("   "));
       display.print(statusPacket.message.peakRegen, 1);
@@ -187,7 +193,33 @@
       justify(5, statusPacket.message.current, 2);
 
       display.display();
-    }
+    } // printCurrent()
+    
+    
+    void printVoltage(void) {
+      display.clearDisplay();
+      display.setTextColor(WHITE);
+      display.setCursor(0,0);
+      display.setTextSize(2);
+      if (! displayTimer.isExpired()) {
+        display.print(F("Voltage"));
+      } else {
+        showFuelGauge();
+      }
+      display.println();
+      display.setTextSize(1);
+      display.print(F("   "));
+      display.print(statusPacket.message.startVoltage, 1);
+      display.print(F("v - "));
+      display.print(statusPacket.message.minVoltage, 1);
+      display.print(F("v"));
+      
+      display.setTextSize(4);
+      display.setCursor(0, 32);
+      justify(5, statusPacket.message.voltage, 2);
+
+      display.display();
+    } // printVoltage()
     
     
     void printDischarge(void) {   
@@ -214,15 +246,17 @@
     } // printDischarge()
 
 
-    
-
     void printRegen(void) {
       display.clearDisplay();
       display.setTextColor(WHITE);
       display.setCursor(0,0);
       display.setTextSize(2);
-      display.println(F("Regen"));
-
+      if (! displayTimer.isExpired()) {
+        display.print(F("Regen"));
+      } else {
+        showFuelGauge();
+      }
+      display.println();
       display.setTextSize(1);
       display.print(F("Peak regen: "));
       display.print(statusPacket.message.peakRegen, 1);
@@ -254,13 +288,13 @@
       }
       display.setTextSize(2);
       for (int i = 2; i >= 0; i--) {
-        display.print(i);
-        display.print(F(": "));
-        justify(5, statusPacket.message.history[i], 0);
+        // display.print(i);
+        // display.print(F(": "));
+        justify(4, statusPacket.message.cHistory[i], 0);
+        display.print("|");
+        justify(4, statusPacket.message.vHistory[i], 1);
         display.println();
       }
-      
-      // showFuelGauge();
       display.display();
     } // printHistory()
     
@@ -293,8 +327,19 @@
       #endif
       #endif
       display.display();
-    }
+    } // printStatus()
 
+
+    void showMessages(const __FlashStringHelper* buffer1, 
+                      const __FlashStringHelper* buffer2, 
+                      const __FlashStringHelper* buffer3) {
+      display.print(buffer1);
+      display.setCursor(0, 18);
+      display.setTextSize(1);
+      display.println(buffer2);
+      display.println(buffer3);
+    }
+    
 
     unsigned long lastMessage = 0;    
     void printMessage() {
@@ -302,12 +347,47 @@
       display.setTextColor(WHITE);
       display.setCursor(0,0);
       display.setTextSize(2);
-      display.print(statusPacket.message.text[0]);
-      display.setCursor(0, 16);
-      display.setTextSize(1);
-      for (byte i = 1; i < 4; i++) {
-        display.println(statusPacket.message.text[i]);
+      switch (statusPacket.message.messageID) {
+        case MSG_STARTUP:
+          display.println(F("Wiiceiver"));
+          display.setTextSize(1);
+          display.print(F("Master v "));
+          display.println(statusPacket.message.text);
+          display.print(F("Host resets: "));
+          display.println(statusPacket.message.watchdogResets);
+          break;
+        case MSG_CALIBRATION_1:
+          showMessages(F("Calibrate?"), F("Hold C..."), F(""));
+          break;
+        case MSG_CALIBRATION_2:
+          showMessages(F("Calibrated!"), F("Chuck center"), F("  stored."));
+          break;
+        case MSG_CALIBRATION_3:
+          showMessages(F("Skipped"), F("Calibration cancelled"), F("Reset to try again"));
+          break;
+        case MSG_CHUCK_1:
+          showMessages(F("NO CHUCK!"), F("Lost signal"), F("  from nunchuck"));
+          break;
+        case MSG_CHUCK_2:
+          showMessages(F("WAITING..."), F("Return stick"), F("  to center"));
+          break;
+        case MSG_CHUCK_3:
+          showMessages(F("Active!"), F("Resuming operation"), F(""));
+          break;
+          display.print("ID ");
+          display.println(statusPacket.message.messageID);
+          break;
+        default:
+          display.println("UNKNOWN");
+          display.print("wot: ");
+          display.println(statusPacket.message.messageID);
       }
+
+      display.setTextSize(1);
+      display.setCursor(0, 48);
+      display.print(F("Host uptime: "));
+      display.print(statusPacket.message.uptime);
+      display.println(F("s"));
       display.print(F("Last update: "));
       display.print((int)((millis() - lastMessage)/1000));
       display.display();
@@ -317,6 +397,7 @@
     void update(void) {      
       static boolean zPrev = false;
       if ((millis() - lastContact) > MASTER_TIMEOUT) {
+        Serial.println(F("Timeout :/"));
         splashScreen();
         return;
       }
@@ -332,11 +413,12 @@
       Serial.println(statusPacket.message.uptime);
       #endif
       
-      if (lastByte > (sizeof(statusPacket.bytes) - sizeof(statusPacket.message.text))) {
+      if (statusPacket.message.messageID != lastMessageID) {
         // sorta a hack; if text was sent, switch to the text screen.
         nextScreen = screen;
         screen = DISP_MESSAGE;
         lastMessage = millis();
+        lastMessageID = statusPacket.message.messageID;
         displayTimer.reset();
       } else {
         if (! statusPacket.message.chuckZ && zPrev &&
@@ -368,12 +450,16 @@
       
       unsigned long startMS = millis();
       
+      // not using a lookup table, for readability purposes
       switch (screen) {
         case DISP_MESSAGE:
             printMessage();
             break;
         case DISP_CURRENT: 
             printCurrent();
+            break;
+        case DISP_VOLTAGE:
+            printVoltage();
             break;
         case DISP_DISCHARGE:
             printDischarge();

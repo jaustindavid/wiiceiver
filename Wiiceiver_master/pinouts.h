@@ -57,6 +57,7 @@
 #define WII_SDA_ID      5
 
 #define AMMETER_ID      6
+#define VOLTMETER_ID    7
 
 
 // #define DEBUGGING_PINS
@@ -85,7 +86,7 @@ void chipSelect (void) {
  * columns = version; first column = v0, second = v1, etc
  */
 int pinLocation(int pinID) {
-  PROGMEM int pinMap[8][2] = {
+  PROGMEM const int pinMap[8][2] = {
   // v1, v2
     {8,   8}, // RED_LED     any digital pin
     {7,   6}, // GREEN_LED   any digital pin
@@ -94,8 +95,10 @@ int pinLocation(int pinID) {
     {19, 19}, // WII_SCL     A5, don't change
     {18, 18}, // WII_SDA     A4, don't change
     {15, 15}, // AMMETER     A1 (analog) 
+    {16, 16}, // VOLTMETER   A2 (analog)
   };
   
+
   if (CSEL < 0) {
     chipSelect();
   }
