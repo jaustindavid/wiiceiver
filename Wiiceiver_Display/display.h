@@ -39,15 +39,19 @@
     #define DISP_STATUS       0
     #define DISP_CURRENT      1
     #define DISP_VOLTAGE      2
-    #define DISP_DISCHARGE    3
-    #define DISP_REGEN        4
-    #define DISP_HISTORY      5
-    #define DISP_MESSAGE      6
-    #define DISP_SPLASH       7    
-    #define DISP_NUMSCREENS   8
+    #define DISP_POWER        3
+    #define DISP_DISCHARGE    4
+    #define DISP_REGEN        5
+    #define DISP_HISTORY      6
+    #define DISP_MESSAGE      7
+    #define DISP_SPLASH       8
+    #define DISP_NUMSCREENS   9
     #define NO_SCREEN         99   // not a screen
     byte screen, prevScreen, nextScreen = NO_SCREEN;
     byte lastMessageID = MSG_NOMESSAGE;
+    int maxPower = 0, minPower = 0;
+    
+
     
     StatusPacket_t statusPacket;
 
@@ -190,7 +194,7 @@
       
       display.setTextSize(4);
       display.setCursor(0, 32);
-      justify(5, statusPacket.message.current, 2);
+      justify(5, statusPacket.message.current, 1);
 
       display.display();
     } // printCurrent()
@@ -209,17 +213,45 @@
       display.println();
       display.setTextSize(1);
       display.print(F("   "));
-      display.print(statusPacket.message.startVoltage, 1);
+      display.print(statusPacket.message.maxVoltage, 1);
       display.print(F("v - "));
       display.print(statusPacket.message.minVoltage, 1);
       display.print(F("v"));
       
       display.setTextSize(4);
       display.setCursor(0, 32);
-      justify(5, statusPacket.message.voltage, 2);
-
+      justify(4, statusPacket.message.voltage, 1);
+      display.print(F("v"));
+      
       display.display();
     } // printVoltage()
+    
+    
+    void printPower(void) {
+      display.clearDisplay();
+      display.setTextColor(WHITE);
+      display.setCursor(0,0);
+      display.setTextSize(2);
+      if (! displayTimer.isExpired()) {
+        display.print(F("Power"));
+      } else {
+        showFuelGauge();
+      }
+      display.println();
+      display.setTextSize(1);
+      display.print(F("   "));
+      display.print(maxPower);
+      display.print(F("w - "));
+      display.print(minPower);
+      display.print(F("w"));
+      
+      display.setCursor(0, 32);
+      display.setTextSize(4);
+      justify(4, statusPacket.message.voltage 
+               * statusPacket.message.current, 0);
+      display.print(F("w"));
+      display.display();
+    } // printPower()
     
     
     void printDischarge(void) {   
@@ -240,7 +272,8 @@
       
       display.setTextSize(4);
       display.setCursor(0, 32);
-      justify(5, statusPacket.message.totalDischarge - statusPacket.message.totalRegen, 0);
+      justify(5, statusPacket.message.totalDischarge 
+               - statusPacket.message.totalRegen, 0);
 
       display.display();
     } // printDischarge()
@@ -394,6 +427,15 @@
     } // printMessage(buffer)
     
     
+    // compute internal stats based on actual data
+    void compute(void) {
+      int power = statusPacket.message.voltage 
+                * statusPacket.message.current;
+      maxPower = max(maxPower, power);
+      minPower = min(minPower, power);
+    } // compute()
+    
+    
     void update(void) {      
       static boolean zPrev = false;
       if ((millis() - lastContact) > MASTER_TIMEOUT) {
@@ -407,6 +449,7 @@
       
       lock = 0;
       statusPacket = statusPacketBuffer;
+      compute();
       // memcopy(&statusPacketBuffer, &statusPacket, sizeof(statusPacketBuffer));
       #ifdef DEBUGGING_I2C
       Serial.print(F("from buffer: "));
@@ -449,7 +492,7 @@
 
       
       unsigned long startMS = millis();
-      
+
       // not using a lookup table, for readability purposes
       switch (screen) {
         case DISP_MESSAGE:
@@ -460,6 +503,9 @@
             break;
         case DISP_VOLTAGE:
             printVoltage();
+            break;
+        case DISP_POWER:
+            printPower();
             break;
         case DISP_DISCHARGE:
             printDischarge();
@@ -482,7 +528,7 @@
         prevScreen = screen;
       }
       
-      #ifdef DEBUGGING
+      #ifdef DEBUGGING_FPS
       Serial.print(F("Display latency: "));
       Serial.print(millis() - startMS);
       Serial.println(F("ms"));

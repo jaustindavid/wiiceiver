@@ -30,7 +30,7 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
-#define TINYQUEUE_SIZE 10
+#define TINYQUEUE_SIZE 50
 #include "StaticQueue.h"
 #include "Throttle.h"
 #include "EEPROMAnything.h"
@@ -65,8 +65,8 @@
 
 // for bench testing, the FAKE_*METER will inject ~random data influenced by 
 // chuck Y position.
-// #define FAKE_AMMETER
-// #define FAKE_VOLTMETER
+#define FAKE_AMMETER
+#define FAKE_VOLTMETER
 
 #define HISTORY 30         // save N previous rides (~upper limit at 1024 bytes EEPROM)
 #define WRITE_PERIOD 30000 // 30s
@@ -75,7 +75,7 @@ class Logger {
 private:
   byte ammeterPin, voltmeterPin;
   int zeroOffset, logEntryBlock, discardCounter;
-  StaticQueue <int> values;
+  StaticQueue <float> currents;
   float current, voltage, cHistory[3], vHistory[3];
   unsigned long lastWritten;
   Throttle* throttle;
@@ -88,7 +88,7 @@ private:
     float totalDischarge;
     float totalRegen;
     // net == discharge - regen
-    float startVoltage;
+    float maxVoltage;
     float minVoltage;
     unsigned long duration;
   }; 
@@ -183,19 +183,13 @@ private:
         current = constrain(current, -10, 100);
       }
     }
-    values.enqueue(current);
+    currents.enqueue(current);
     #ifdef DEBUGGING_LOGGER_CURRENT
     Serial.print(F("; estimated current: "));
     Serial.print(current);
     #endif
 
-    float avgCurrent = values.sum() / TINYQUEUE_SIZE;
-
-    #ifdef NEVER_DO_THIS
-    if (random(100) > 99) {
-      values.dump(Serial);
-    }
-    #endif
+    float avgCurrent = currents.sum() / TINYQUEUE_SIZE;
 
     #ifdef DEBUGGING_LOGGER_CURRENT
     Serial.print(F("; 50mavg current = "));
@@ -264,7 +258,7 @@ private:
         Serial.println(avg);
         Serial.println(F("then re-upload this sketch"));
         
-        logEntry.startVoltage = logEntry.minVoltage = readVoltage(pin);
+        logEntry.maxVoltage = logEntry.minVoltage = readVoltage(pin);
       }
     }    
     return pin != 0;
@@ -285,9 +279,10 @@ private:
     if (V > 16 && V < 40) {
       voltage = V;
       logEntry.minVoltage = min(logEntry.minVoltage, voltage);
+      logEntry.maxVoltage = max(logEntry.maxVoltage, voltage);
       #ifdef DEBUGGING_LOGGER_VOLTAGE
       Serial.print(F("Voltage: start "));
-      Serial.print(logEntry.startVoltage);
+      Serial.print(logEntry.maxVoltage);
       Serial.print(F("v; now "));
       Serial.print(voltage);
       Serial.println(F("v"));
@@ -391,7 +386,7 @@ private:
 
   // prints a single LogEntry record
   void showLogEntry(LogEntry entry) {
-    Serial.print(entry.startVoltage);
+    Serial.print(entry.maxVoltage);
     Serial.print(F("v - "));
     Serial.print(entry.minVoltage);
     Serial.print(F("v; "));
@@ -507,65 +502,7 @@ public:
     if (voltmeterPin) {
       readVoltmeter();
     }
-/*
-    int value = analogRead(pin);
-    #ifdef DEBUGGING_LOGGER
-    Serial.print(F("Ammeter value: "));
-    Serial.print(value);
-    #endif
-    
-    // sanity check 250 < value < 1023
-    if (250 > value || value > 1023) {
-      Serial.print("ZOMG: nonsensical ammeter reading: ");
-      Serial.println(value);
-      current = 0;
-    } else if ((value + zeroOffset) < 0 && (value + zeroOffset) > -3) {
-      current = 0;
-    } else {
-      #define VCC 5.0 // volts
-      //  Current = ((analogRead(1)*(5.00/1024))- 2.5)/ .02;
-      current = (((value + zeroOffset) * (VCC)/1024) - (VCC)/2) / 0.02;
-      // sanity check -10 < current < 100
-      
-      if (-10 > current || current > 100) {
-        Serial.print("ZOMG current is out of bounds; discarding: ");
-        Serial.println(current);
-        ++discardCounter;
-        // current = 0;
-        current = constrain(current, -10, 100);
-      }
-    }
-    values.enqueue(current);
-    #ifdef DEBUGGING_LOGGER
-    Serial.print(F("; estimated current: "));
-    Serial.print(current);
-    #endif
 
-    float avgCurrent = values.sum() / TINYQUEUE_SIZE;
-
-    #ifdef NEVER_DO_THIS
-    if (random(100) > 99) {
-      values.dump(Serial);
-    }
-    #endif
-
-    #ifdef DEBUGGING_LOGGER
-    Serial.print(F("; 50mavg current = "));
-    Serial.println(avgCurrent);
-    #endif
-
-    logEntry.peakDischarge = max(logEntry.peakDischarge, avgCurrent);
-    logEntry.peakRegen = min(logEntry.peakRegen, avgCurrent);
-
-    float mAh = current * 20 / 3600;  // amps * 20ms / 3600s/H
-    // sanity-check
-    if (current > 0) {
-      logEntry.totalDischarge += mAh;
-    } 
-    else {
-      logEntry.totalRegen -= mAh;
-    }
-    */
     logEntry.duration = millis();
     saveValues();
 
@@ -609,12 +546,12 @@ public:
   
   
   float getAvgCurrent(const byte n) {
-    return values.sum(n) / n;
+    return currents.sum(n) / n;
   }
   
   
-  float getStartVoltage(void) {
-    return logEntry.startVoltage;
+  float getMaxVoltage(void) {
+    return logEntry.maxVoltage;
   }
   
   

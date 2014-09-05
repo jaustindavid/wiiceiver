@@ -65,7 +65,7 @@ class StaticQueue {
     // helper function --- increment an index, wrap if needed
     byte increment(const byte index) {
       byte ret = index + 1;
-      if (ret >= TINYQUEUE_SIZE) {
+      if (ret > TINYQUEUE_SIZE) {
     	return 0;
       } else {
     	return ret;

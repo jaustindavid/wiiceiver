@@ -142,7 +142,7 @@ class Display {
         statusPacket.message.vHistory[i] = logger->getNthVRec(i);
       }
       
-      statusPacket.message.startVoltage = logger->getStartVoltage();
+      statusPacket.message.maxVoltage = logger->getMaxVoltage();
       statusPacket.message.voltage = logger->getVoltage();
       statusPacket.message.minVoltage = logger->getMinVoltage();      
       

@@ -51,7 +51,7 @@
     float chuckY;            // -1 .. 1
     bool chuckC, chuckZ;     // up/down state
     byte chuckCcounter, chuckZcounter;   // 0..250, #cycles since last change
-    float startVoltage;      // Volts
+    float maxVoltage;        // Volts
     float voltage;           // Volts
     float minVoltage;        // Volts
     float peakDischarge;     // Amps

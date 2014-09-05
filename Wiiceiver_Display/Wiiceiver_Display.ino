@@ -63,6 +63,7 @@ Adafruit_SSD1306 display(OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
 
 #define DEBUGGING
 // #define DEBUGGING_I2C
+// #define DEBUGGING_FPS
 
 #define WIICEIVER_HEAD_VERSION "0.5 alpha"
 // addys for vars stored in EEPROM
@@ -71,7 +72,7 @@ Adafruit_SSD1306 display(OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
 #define EEPROM_WDC_ADDY          2
 #define EEPROM_LOGGER_ADDY       16
 
-// #include "MemoryFree.h"
+#include "MemoryFree.h"
 #include "wiiceiver_i2c.h"
 #include "utils.h"
 #include "display.h"
@@ -79,8 +80,6 @@ Adafruit_SSD1306 display(OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
 
 Timer memTimer(10000);
 
-
-#define WIICEIVER_HEAD_VERSION "0.1"
 
 // addys for vars stored in EEPROM
 #define EEPROM_Y_ADDY            0
