@@ -65,8 +65,8 @@
 
 // for bench testing, the FAKE_*METER will inject ~random data influenced by 
 // chuck Y position.
-#define FAKE_AMMETER
-#define FAKE_VOLTMETER
+// #define FAKE_AMMETER
+// #define FAKE_VOLTMETER
 
 #define HISTORY 30         // save N previous rides (~upper limit at 1024 bytes EEPROM)
 #define WRITE_PERIOD 30000 // 30s
