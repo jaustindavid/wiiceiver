@@ -58,36 +58,40 @@
  * records.
  */
 
-// #define DEBUGGING_LOGGER
+#define DEBUGGING_LOGGER
 // #define DEBUGGING_LOGGER_CURRENT
 // #define DEBUGGING_LOGGER_VOLTAGE
 // #define DEBUGGING_LOGGER_STORAGE
 
 // for bench testing, the FAKE_*METER will inject ~random data influenced by 
 // chuck Y position.
-// #define FAKE_AMMETER
-// #define FAKE_VOLTMETER
+#define FAKE_AMMETER
+#define FAKE_VOLTMETER
 
-#define HISTORY 30         // save N previous rides (~upper limit at 1024 bytes EEPROM)
+// #define HISTORY 30         // save N previous rides (~upper limit at 1024 bytes EEPROM)
+#define HISTORY ((1023 - (EEPROM_LOGGER_ADDY + sizeof(logEntryStruct)))/sizeof(logEntryStruct))
+
 #define WRITE_PERIOD 30000 // 30s
 
 class Logger {
 private:
   byte ammeterPin, voltmeterPin;
   int zeroOffset, logEntryBlock, discardCounter;
+  int previousDischarge;
   StaticQueue <float> currents;
   float current, voltage, cHistory[3], vHistory[3];
   unsigned long lastWritten;
   Throttle* throttle;
 
   // increment this when logEntryStruct changes
-  #define LOGGER_VERSION 0
+  #define LOGGER_VERSION 2
   struct logEntryStruct {
     float peakDischarge;
     float peakRegen;
-    float totalDischarge;
-    float totalRegen;
+    float tripDischarge;
+    float tripRegen;
     // net == discharge - regen
+    int accumulatedDischarge;
     float maxVoltage;
     float minVoltage;
     unsigned long duration;
@@ -202,16 +206,17 @@ private:
     float mAh = current * 20 / 3600;  // amps * 20ms / 3600s/H
     // sanity-check
     if (current > 0) {
-      logEntry.totalDischarge += mAh;
+      logEntry.tripDischarge += mAh;
     } 
     else {
-      logEntry.totalRegen -= mAh;
-    }    
+      logEntry.tripRegen -= mAh;
+    }
+    
   } // readAmmeter()
 
 
   #ifdef FAKE_VOLTMETER
-  #define VOLTMETER_READ(PIN) (900+100 * Chuck::getInstance()->Y)
+  #define VOLTMETER_READ(PIN) (850+100 * Chuck::getInstance()->Y)
   #else
   #define VOLTMETER_READ(PIN) analogRead(PIN)
   #endif
@@ -237,6 +242,7 @@ private:
      */
     #define VOLTAGE_REF       33.6
     #define VALUE_REF          931
+    #define VOLTAGE_RECHARGED 33.4
     if (pin) {
       pinMode(pin, INPUT_PULLUP);
       int value = VOLTMETER_READ(pin);
@@ -352,7 +358,7 @@ private:
       Serial.print(F(" clearing block #"));
       Serial.print(block);
       Serial.print(F(" at address ..."));
-      Serial.println(blockToAddy(block));
+      Serial.print(blockToAddy(block));
       EEPROM.write(blockToAddy(block), 255);
     }
   } // clearNextAddy(block)
@@ -370,7 +376,7 @@ private:
 #endif
     if (millis() - lastWritten > WRITE_PERIOD &&
       abs(current) < 1.5 && 
-      logEntry.totalDischarge > 50 &&
+      logEntry.tripDischarge > 50 &&
       abs(Chuck::getInstance()->Y) < THROTTLE_MIN) {
       Serial.print(F("Logger: saving ..."));
       unsigned long start = millis();
@@ -395,11 +401,14 @@ private:
     Serial.print(F("A; peak regen: "));
     Serial.print(entry.peakRegen);
     Serial.print(F("A; total Discharge: "));
-    Serial.print(entry.totalDischarge);
+    Serial.print(entry.tripDischarge);
     Serial.print(F("mAh; total Regen: "));
-    Serial.print(entry.totalRegen);
+    Serial.print(entry.tripRegen);
     Serial.print(F("mAh; net discharge: "));
-    Serial.print(entry.totalDischarge - entry.totalRegen);
+    Serial.print(entry.tripDischarge - entry.tripRegen);
+    Serial.print(F("mAh; total: "));
+    Serial.print(entry.accumulatedDischarge 
+               + entry.tripDischarge - entry.tripRegen);
     Serial.print(F("mAh in "));
     Serial.print(entry.duration / 1000);
     Serial.println(F(" seconds"));
@@ -443,11 +452,32 @@ private:
         cHistory[b] = vHistory[b] = 0.0;
       } else {
         EEPROM_readAnything(blockToAddy(block), entry);
-        cHistory[b] = entry.totalDischarge - entry.totalRegen;
+        cHistory[b] = entry.tripDischarge - entry.tripRegen;
         vHistory[b] = entry.minVoltage;
+        if (b == 0) { // only for the most recent one
+          logEntry.accumulatedDischarge = 
+                    entry.accumulatedDischarge + entry.tripDischarge - entry.tripRegen;
+          Serial.print("Accumulated discharge: ");
+          Serial.println(logEntry.accumulatedDischarge);
+        }
       }
     }
   } // buildHistory()
+  
+  
+  // checks to see if we were recharged
+  void checkTotalDischarge(void) {
+    static bool recharged = false;
+    // in the first 10s, check to see if we've been recharged
+    if (millis() < 10000 && !recharged) {
+      if (voltage >= VOLTAGE_RECHARGED) {
+        recharged = true;
+        logEntry.accumulatedDischarge = 0;
+        
+        Serial.println(F("Recharged!"));
+      }
+    }
+  }
   
 
 public:
@@ -504,6 +534,7 @@ public:
     }
 
     logEntry.duration = millis();
+    checkTotalDischarge();
     saveValues();
 
     #ifdef DEBUGGING_LOGGER
@@ -516,19 +547,18 @@ public:
 
 
   float getDischarge(void) {
-    return logEntry.totalDischarge;
+    return logEntry.tripDischarge;
   }
 
 
   float getRegen(void) {
-    return logEntry.totalRegen;
+    return logEntry.tripRegen;
   }
 
 
   float getNetDischarge(void) {
-    return logEntry.totalDischarge - logEntry.totalRegen;
+    return logEntry.tripDischarge - logEntry.tripRegen + logEntry.accumulatedDischarge;
   }
-
 
   float getPeakDischarge(void) {
     return logEntry.peakDischarge;

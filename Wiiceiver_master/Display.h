@@ -148,8 +148,10 @@ class Display {
       
       statusPacket.message.peakDischarge = logger->getPeakDischarge();
       statusPacket.message.peakRegen = logger->getPeakRegen();
-      statusPacket.message.totalDischarge = logger->getDischarge();
-      statusPacket.message.totalRegen = logger->getRegen();
+      statusPacket.message.tripDischarge = logger->getDischarge();
+      statusPacket.message.tripRegen = logger->getRegen();
+      statusPacket.message.netDischarge = logger->getNetDischarge();
+
       statusPacket.message.current = logger->getAvgCurrent(10);
       statusPacket.message.lastWritten = (int)(logger->getLastWritten() / 1000);
 

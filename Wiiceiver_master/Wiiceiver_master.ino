@@ -36,7 +36,7 @@
 #include <Wire.h>
 #include <Servo.h>
 #include <EEPROM.h>
-// #include "MemoryFree.h"
+#include "MemoryFree.h"
 
 
 #define WIICEIVER_VERSION "1.6.0 exp"

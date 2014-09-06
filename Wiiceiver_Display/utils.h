@@ -31,6 +31,8 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <avr/eeprom.h>
+
 // #define DEBUGGING_TIMER
 
 class Timer {
@@ -67,5 +69,77 @@ class Timer {
    } // bool isExpired()
    
 };
+
+
+/********************
+ *
+ * fuel gauge persistence stuff
+ *
+ ********************/
+
+#define EEPROM_DISCHARGE_HEAD 16
+
+
+int _block2addy(int block) {
+  return EEPROM_DISCHARGE_HEAD + sizeof(int) * block;
+} // int _block2addy(block)
+
+
+
+static int NR_BLOCKS = (1023 - (EEPROM_DISCHARGE_HEAD + sizeof(int))) 
+                      / sizeof(int);
+
+int _findUnusedBlock(void) {
+  int block = 0;
+  while (block <= NR_BLOCKS && 
+         EEPROM.read(_block2addy(block)) != 255) {
+    block++;
+  }
+  
+  if (block > NR_BLOCKS) {
+    block = 0;
+  }
+  
+  return block;
+} // _findUnusedBlock()
+
+
+// reads the total net discharge saved in flash
+int readTotalDischarge(void) {
+  int block = _findUnusedBlock();
+  if (block == 0) {
+    block = NR_BLOCKS;
+  } else {
+    block --;
+  }
+  Serial.print("[found block #");
+  Serial.print(block);
+  Serial.print("] ");
+  int discharge = eeprom_read_word((word *)_block2addy(block));
+  
+  if (discharge < 0) {
+    discharge = 0;
+  } 
+  
+  return discharge;
+} // int readTotalDischarge()
+
+
+// saves the new total net discharge to flash
+int saveTotalDischarge(int discharge) {
+  int block = _findUnusedBlock();
+  eeprom_write_word((word *)_block2addy(block), discharge);
+  Serial.print("wrote to block #");
+  Serial.println(block);
+
+  block ++;
+  if (block > NR_BLOCKS) {
+    block = 0;
+  }
+  
+  EEPROM.write(_block2addy(block), 255);
+  return block;
+} // saveTotalDischarge(discharge)
+
 
 #endif

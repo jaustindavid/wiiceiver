@@ -50,7 +50,7 @@
     byte screen, prevScreen, nextScreen = NO_SCREEN;
     byte lastMessageID = MSG_NOMESSAGE;
     int maxPower = 0, minPower = 0;
-    
+    int previousDischarge = 0;
 
     
     StatusPacket_t statusPacket;
@@ -130,12 +130,14 @@
     }    
 
 
+ 
+
+
     // E [###########______] F 
     void showFuelGauge(void) {
       #define PACK_CAPACITY  9000 // mAh
-      float fuelLevel = (PACK_CAPACITY
-                         - (statusPacket.message.totalDischarge 
-                          - statusPacket.message.totalRegen))
+      float fuelLevel = (PACK_CAPACITY 
+                       - statusPacket.message.netDischarge)
                        / PACK_CAPACITY;
       fuelLevel = constrain(fuelLevel, 0.0, 1.0);
 
@@ -272,8 +274,8 @@
       
       display.setTextSize(4);
       display.setCursor(0, 32);
-      justify(5, statusPacket.message.totalDischarge 
-               - statusPacket.message.totalRegen, 0);
+      justify(5, statusPacket.message.tripDischarge 
+               - statusPacket.message.tripRegen, 0);
 
       display.display();
     } // printDischarge()
@@ -297,7 +299,7 @@
 
       display.setTextSize(4);
       display.setCursor(0, 32);
-      justify(5, statusPacket.message.totalRegen, 1);
+      justify(5, statusPacket.message.tripRegen, 1);
 
       display.display();
     } // printRegen()
@@ -437,8 +439,10 @@
     
     
     void update(void) {      
+      unsigned long now = millis();
+            
       static boolean zPrev = false;
-      if ((millis() - lastContact) > MASTER_TIMEOUT) {
+      if ((now - lastContact) > MASTER_TIMEOUT) {
         Serial.println(F("Timeout :/"));
         splashScreen();
         return;
@@ -460,7 +464,7 @@
         // sorta a hack; if text was sent, switch to the text screen.
         nextScreen = screen;
         screen = DISP_MESSAGE;
-        lastMessage = millis();
+        lastMessage = now;
         lastMessageID = statusPacket.message.messageID;
         displayTimer.reset();
       } else {
@@ -491,7 +495,7 @@
       zPrev = statusPacket.message.chuckZ;
 
       
-      unsigned long startMS = millis();
+      unsigned long startMS = now;
 
       // not using a lookup table, for readability purposes
       switch (screen) {

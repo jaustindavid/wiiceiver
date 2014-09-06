@@ -56,8 +56,9 @@
     float minVoltage;        // Volts
     float peakDischarge;     // Amps
     float peakRegen;         // Amps
-    float totalDischarge;    // mAh
-    float totalRegen;        // mAh
+    float tripDischarge;     // mAh
+    float tripRegen;         // mAh
+    float netDischarge;      // mAh
     float current;           // Amps
     float throttle;          // -1 .. 1
     int uptime;              // seconds
