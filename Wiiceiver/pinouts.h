@@ -37,6 +37,7 @@
  *    pin 13 is grounded; A0 would float
  * "v2" board -- Peter Homann's design,  peter@homanndesigns.com
  *    A6/A7 with fixed voltages (note: DIP package doesn't have A6/A7)
+ *    http://www.homanndesigns.com for more infoes!
  * future boards: a voltage divider on A0 & analog leveling
  *    pin 13 grounded; A0 at a predictable level
  */
