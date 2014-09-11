@@ -35,6 +35,8 @@
  *    pin 13 will float (INPUT_PULLUP -> HIGH)
  * "v1" boards -- hand-laid on the AdaFruit white breadboard
  *    pin 13 is grounded; A0 would float
+ * "v2" board -- Peter Homann's design,  peter@homanndesigns.com
+ *    A6/A7 with fixed voltages (note: DIP package doesn't have A6/A7)
  * future boards: a voltage divider on A0 & analog leveling
  *    pin 13 grounded; A0 at a predictable level
  */
@@ -48,6 +50,7 @@
 #define GREEN_LED_ID 1
 
 #define ESC_PPM_ID   2
+#define ESC2_PPM_ID   6
 #define ESC_GROUND 00     // hard-wired
 
 #define WII_POWER_ID 3
@@ -60,12 +63,19 @@
  
 int CSEL = -1;
 void chipSelect (void) {
-  pinMode(13, INPUT_PULLUP);
-  if (digitalRead(13) == HIGH) {
-    CSEL = 0;
+  int A6Sel = analogRead(6);
+  int A7Sel = analogRead(7);
+  
+  if ((A6Sel > 900 ) && (A7Sel < 100 )) {
+    CSEL = 2;
   } else {
+    pinMode(13, INPUT_PULLUP);
+    if (digitalRead(13) == HIGH) {
+      CSEL = 0;
+    } else {
     // future: perform analogRead on pin 23
     CSEL = 1;
+    }
   }
   
 #ifdef DEBUGGING_PINS
@@ -81,14 +91,15 @@ void chipSelect (void) {
  * columns = version; first column = v0, second = v1, etc
  */
 int pinLocation(int pinID) {
-  int pinMap[6][2] = {
-  // v1, v2
-    {8,   8}, // RED_LED     any digital pin
-    {7,   6}, // GREEN_LED   any digital pin
-    {10,  9}, // ESC_PPM     PWM required
-    {9,  11}, // WII_POWER   any digital pin
-    {19, 19}, // WII_SCL     A5, don't change
-    {18, 18}, // WII_SDA     A4, don't change
+  int pinMap[7][3] = {
+  // v1, v2, v3
+    {8,   8,  8},  // RED_LED     any digital pin
+    {7,   6,  6},  // GREEN_LED   any digital pin
+    {10,  9,  9},  // ESC_PPM     PWM required
+    {9,  11,  5},  // WII_POWER   any digital pin
+    {19, 19, 19}, // WII_SCL     A5, don't change
+    {18, 18, 18}, // WII_SDA     A4, don't change
+    {0,   0, 10}, // ESC2_PPM    PWM required
   };
   
   if (CSEL < 0) {

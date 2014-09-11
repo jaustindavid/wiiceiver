@@ -32,7 +32,7 @@
 #include <Servo.h>
 #include <EEPROM.h>
 
-#define WIICEIVER_VERSION "1.1 alpha"
+#define WIICEIVER_VERSION "1.2"
 
 // addys for vars stored in EEPROM
 #define EEPROM_Y_ADDY 0
@@ -64,7 +64,7 @@
 #include "Smoother.h"
 
 
-#define DEBUGGING_THROTTLE
+// #define DEBUGGING_THROTTLE
 #define THROTTLE_MIN 0.05                      // the lowest throttle to send the ESC
 #define THROTTLE_CC_BUMP 0.003                 // CC = 0.2% throttle increase; 50/s = 10s to hit 100% on cruise
 #define THROTTLE_MIN_CC 0.05                   // minimum / inital speed for cruise crontrol
@@ -381,7 +381,7 @@ void setup() {
   red.init(pinLocation(RED_LED_ID));
 
   setup_pins();
-  ESC.init(pinLocation(ESC_PPM_ID));
+  ESC.init(pinLocation(ESC_PPM_ID), pinLocation(ESC2_PPM_ID));
   
   splashScreen();
 

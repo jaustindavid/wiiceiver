@@ -39,21 +39,32 @@ class ElectronicSpeedController {
 #define ESC_MAX_ANGLE 180   // angle of "max" deflection
 
 private:
-  Servo _esc;
+  bool dualESC;
+  Servo _esc1, _esc2;
   int angle;                // the angle most recently written to _esc;
   int microseconds;         // the time (ms) most recently written
   unsigned long lastWrite;  // time in millis() when it was last written
 
 public:
 
-void init(int pin) {
+void init(int pin1, int pin2) {
   angle = -1;
   lastWrite = 0;
 #ifdef DEBUGGING_ESC
-  Serial.print("attaching to pin #");
-  Serial.println(pin);
+  Serial.print("attaching to pin1 #");
+  Serial.println(pin1);
+  Serial.print(", pin2 #");
+  Serial.print(pin2);
 #endif
-  _esc.attach(pin, 1000, 2000);
+  _esc1.attach(pin1, 1000, 2000);
+  if (pin2) {
+    dualESC = true;
+    _esc2.attach(pin2, 1000, 2000);
+    Serial.println("Dual ESC!");
+  } else {
+    dualESC = false;
+  }
+  
   
   delay(21);  // give the "last written" protection room to work
 #ifdef DEBUGGING_ESC
@@ -106,7 +117,10 @@ void setLevel(float level) {
 #endif
     angle = newAngle;
     microseconds = newUs;
-    _esc.write(angle);
+    _esc1.write(angle);
+    if (dualESC) {
+      _esc2.write(angle);
+    }
     // _esc.writeMicroseconds(microseconds);
 #ifdef DEBUGGING_ESC
     Serial.print(F(": ESC now: "));

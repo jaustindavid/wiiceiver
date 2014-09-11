@@ -119,7 +119,7 @@ class Throttle {
     
 
 
-    #define DEBUGGING_THROTTLE_CCR
+    // #define DEBUGGING_THROTTLE_CCR
     /*
      * > 0 (a throttle level) if we should return to the previous CC value
      * ... because we were holding C for a bit, then stopped (coasted),
