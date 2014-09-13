@@ -98,9 +98,9 @@ int pinLocation(int pinID) {
     {7,   6,  6},  // GREEN_LED   any digital pin
     {10,  9,  9},  // ESC_PPM     PWM required
     {9,  11,  5},  // WII_POWER   any digital pin
-    {19, 19, 19}, // WII_SCL     A5, don't change
-    {18, 18, 18}, // WII_SDA     A4, don't change
-    {0,   0, 10}, // ESC2_PPM    PWM required
+    {19, 19, 19},  // WII_SCL     A5, don't change
+    {18, 18, 18},  // WII_SDA     A4, don't change
+    {0,  10, 10},  // ESC2_PPM    PWM required
   };
   
   if (CSEL < 0) {
