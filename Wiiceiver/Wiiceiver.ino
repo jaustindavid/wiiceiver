@@ -32,7 +32,7 @@
 #include <Servo.h>
 #include <EEPROM.h>
 
-#define WIICEIVER_VERSION "1.2"
+#define WIICEIVER_VERSION "1.2.2"
 
 // addys for vars stored in EEPROM
 #define EEPROM_Y_ADDY 0
@@ -40,7 +40,7 @@
 #define EEPROM_WDC_ADDY 2
 
 
-// #define DEBUGGING
+#define DEBUGGING
 
 #include "Blinker.h"
 
@@ -128,14 +128,19 @@ void maybeCalibrate(void) {
   int ctr = 0;
   int i = 0;
 
-  chuck.update();
+  for (i = 0; i < 10; i++) {
+    chuck.update();
+    delay(10);
+  }
   if (chuck.C != 1 || ! chuck.isActive()) {
     return;
   }
 
   red.update(10);
   green.update(10);
-  while (i < 250 && chuck.C) {
+  i = 0;
+  #define C_COUNT 50
+  while (i <= C_COUNT && chuck.C) {
     chuck.update();
     red.run();
     green.run();
@@ -145,11 +150,11 @@ void maybeCalibrate(void) {
   }
 
   #ifdef DEBUGGING
-  Serial.print("C = ");
+  Serial.print("C ctr = ");
   Serial.println(ctr);
   #endif
 
-  if (chuck.C == 1 && chuck.isActive()) {
+  if (ctr >= C_COUNT && chuck.isActive()) {
     chuck.calibrateCenter();
     chuck.writeEEPROM();
     // side effect: reset the WDC
@@ -280,7 +285,7 @@ bool waitForActivity(void) {
 #endif
   
   return chuck.isActive();
-}
+} // bool waitForActivity()
 
 
 // dead code?

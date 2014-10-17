@@ -156,14 +156,18 @@ private:
   
   // startup sequence: some small range of inputs, then idle
   void syncESC(void) {
-/*    
-    sweep(0, SYNC_LIMIT, SYNC_LIMIT/2);
-    delay(500);
-    sweep(SYNC_LIMIT, -SYNC_LIMIT, -SYNC_LIMIT/2);
-    delay(500);
-*/
-    sweep(-SYNC_LIMIT, 0, SYNC_LIMIT/2);
-    delay(1000);
+    setLevel(0);
+    delay(100);
+    setLevel(1);
+    delay(50);
+    setLevel(-1);
+    delay(50);
+    setLevel(0);
+    delay(100);
+    setLevel(1);
+    delay(100);
+    setLevel(0);
+    delay(100);
   } // void syncESC(void)
   
 };  // class ElectronicSpeedController 
