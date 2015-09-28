@@ -32,8 +32,68 @@
 
 // not strictly necessary, but a nice reminder
 #include "Chuck.h"
-#include "Smoother.h"
+#include "Smoover.h"
+#include "Cruiser.h"
 
+
+/*
+  TUNABLES: these are the most immediate ways to
+  tune wiiceiver for your setup & preferences
+
+  THROTTLE and BRAKES each have their own settings
+  and cruise control.
+  
+  *_RISE : rate (%throttle per 20ms) of maximum increase
+     higher RISE == harder acceleration
+  *_FALL : rate (% per 20ms) of reset to zero on idle
+     lower FALL == snappier throttle response
+  *_SMOOTH : exponential smoothing factor
+     higher SMOOTH == more direct throttle response
+     lower SMOOTH == softer throttle response
+  *_MIN_BUMP : minimum change for any input
+     probably don't need to change this
+     
+  #define THROTTLE_RISE     0.003  // roughly 15% increase per second
+  #define THROTTLE_FALL     0.005  // rought 25% decrease per second at idle
+  #define THROTTLE_SMOOTH   0.050  // 5% exponential smoothing (1.0 disables it)
+  #define THROTTLE_MIN_BUMP 0.003
+  
+  #define BRAKES_RISE       0.004
+  #define BRAKES_FALL       0.005
+  #define BRAKES_SMOOTH     0.050
+  #define BRAKES_MIN_BUMP   0.003
+
+  *_CC_BUMP : max amount change for cruise control input
+     same calculation as throttle; usually softer
+  *_CC_AUTO : default "auto cruise" level (slowest cruise setting)
+     for brakes, this is the "drag brake" when you hit Z
+
+  #define THROTTLE_CC_BUMP  0.002
+  #define THROTTLE_CC_AUTO  0.000
+  
+  #define BRAKES_CC_BUMP    0.003
+  #define BRAKES_CC_AUTO    0.050
+*/
+
+
+// only accurate to 3 digits, sorry
+#define THROTTLE_RISE     0.002
+#define THROTTLE_FALL     0.005
+#define THROTTLE_SMOOTH   1.0 // 0.050
+#define THROTTLE_MIN_BUMP 0.003
+
+#define BRAKES_RISE       0.020
+#define BRAKES_FALL       0.020
+#define BRAKES_SMOOTH     1.0 // 0.100
+#define BRAKES_MIN_BUMP   0.003
+
+#define THROTTLE_CC_RISE  0.001
+#define THROTTLE_CC_FALL  0.003
+#define THROTTLE_CC_AUTO  0.050
+
+#define BRAKES_CC_RISE    0.003
+#define BRAKES_CC_FALL    0.003
+#define BRAKES_CC_AUTO    0.050
 
 /*
  * Manages the throttle input; presents a smoothed output, [ -1 .. 1 ]
@@ -41,207 +101,39 @@
 
 class Throttle {
   private:
-    float autoCruise, throttle, previousCruiseLevel;
-    int xCounter;
-    Smoother smoother;
-    
-    
-    void readAutoCruise(void) {
-      byte storedValue = EEPROM.read(EEPROM_AUTOCRUISE_ADDY);
-      Serial.print("Read autoCruise from EEPROM: ");
-      Serial.print(storedValue);
+    float throttle;
+    Smoover *upper, *downer;
+    Cruiser *cruiser, *braker;
 
-      if (storedValue > 0 && storedValue < 100) {
-        autoCruise = 0.01 * storedValue;
-        Serial.print("; setting autoCruise = ");
-        Serial.println(autoCruise);
-      } else {
-        Serial.print("; ignoring, leaving autoCruise = ");
-        Serial.println(autoCruise);
-      }
-    } // float readAutoCruise(void) 
-    
-
-    // sets the internal autoCruise var to the current throttle position,
-    // and writes it to EEPROM    
-    void writeAutoCruise(void) {
-      autoCruise = throttle;
-      int storedValue = autoCruise * 100;
-      EEPROM.write(EEPROM_AUTOCRUISE_ADDY, storedValue);
-      #ifdef DEBUGGING_THROTTLE
-      Serial.print("Storing autoCruise as ");
-      Serial.println(storedValue);
-      #endif         
-    } // void writeAutoCruise(void)
-
-
-    /*
-     * returns 'true' if we're in a "set autocruise level" state:
-     *   while in cruise (chuck.C), with no throttle input (chuck.Y =~ 0), 
-     *   holding Z, full X deflection (chuck.X > 0.75) ... for N cycles,
-     *   within 2 minutes of startup ...
-     * set "autoCruise" to the current throttle level.
-     *   
-     */
-    bool checkAutoCruise(Chuck chuck) {
-      if (! chuck.C) {
-        #ifdef DEBUGGING_THROTTLE_CAC
-        Serial.println("checkAutoCruise: no C");
-        #endif
-        xCounter = 0;
-        return false;
-      }
-      if (millis() < 120 * 1000 &&
-          chuck.Z &&
-          abs(chuck.Y) < 0.25 && 
-          abs(chuck.X) > 0.75) {
-        ++xCounter;
-        #ifdef DEBUGGING_THROTTLE_CAC
-        Serial.print("checkAutoCruise: xCounter = ");
-        Serial.println(xCounter);
-        #endif
-        if (xCounter == 150) { // ~3s holding X
-          writeAutoCruise();  
-        }
-        return true;
-      } else {
-        xCounter = 0;
-        #ifdef DEBUGGING_THROTTLE_CAC
-        Serial.println("checkAutoCruise: no X or Y");
-        Serial.print("x = ");
-        Serial.print(abs(chuck.X));
-        Serial.print(", y = ");
-        Serial.println(abs(chuck.Y));
-        #endif        
-        return false;
-      }
-    } // bool checkAutoCruise(void)
-    
-
-
-    // #define DEBUGGING_THROTTLE_CCR
-    /*
-     * > 0 (a throttle level) if we should return to the previous CC value
-     * ... because we were holding C for a bit, then stopped (coasted),
-     *     then resumed after only a short time
-     *
-     * returning 0.0 is equivalent to "ignore me and use throttle", which *can*
-     * mean holding an existing cruise level.  This can happen while cruise is 
-     * resuming (acceleration to a previous cruise level, while holding C).
-     *
-     * side effects: stores a few states as well as the previousCruise level
-     */
-    float checkCruiseReturn(Chuck chuck) {
-      static bool previousC;
-      static unsigned long previousCruiseMS;
-      float newThrottle = 0.0;
-      static int ccrState = 0;
-      
-      #define CCR_NULL 0             // default
-      #define CCR_RESUMING 1         // !C -> C, resuming
-      #define CCR_WAITING 2          // C -> !C, no input -- resume is possible
-
-      #ifdef DEBUGGING_THROTTLE_CCR
-      Serial.print("checkCruiseReturn (");
-      Serial.print(ccrState);
-      Serial.print("): ");
-      #endif 
-
-      if (ccrState == CCR_WAITING &&
-          (previousCruiseMS + THROTTLE_CRUISE_RETURN_MS < millis())) {
-        // time's up -- cancel cruise
-        ccrState = CCR_NULL; 
-        previousCruiseLevel = 0;
-      }
-
-      if (chuck.C && !previousC && ccrState == CCR_WAITING) {
-        #ifdef DEBUGGING_THROTTLE_CCR
-        Serial.print("!C -> C && still time");
-        #endif
-        ccrState = CCR_RESUMING;
-      }
-      
-      if (! chuck.C && previousC) {
-        previousCruiseLevel = getThrottle();
-        previousCruiseMS = millis();
-        newThrottle = 0.0;
-        #ifdef DEBUGGING_THROTTLE_CCR
-        Serial.print("C -> !C");
-        Serial.print("saving prev: ");
-        Serial.print(previousCruiseLevel);
-        #endif
-        ccrState = CCR_WAITING;
-      }
-      
-      // any joystick input kills cruise resume
-      if (abs(chuck.X) > THROTTLE_MIN ||
-          abs(chuck.Y) > THROTTLE_MIN) {
-        #ifdef DEBUGGING_THROTTLE_CCR
-        Serial.print("stick");
-        #endif
-        previousCruiseMS = previousCruiseLevel = 0;
-        newThrottle = 0.0;
-        ccrState = CCR_NULL;
-      }
-      
-      if (ccrState == CCR_RESUMING) {
-        newThrottle = smoother.smooth(previousCruiseLevel, SMOOTHER_CRUISE_RESUME_PROGRAM);
-      } // CCR_RESUMING
-
-      #ifdef DEBUGGING_THROTTLE_CCR
-      Serial.print(" (->");
-      Serial.print(ccrState);
-      Serial.println(")");
-      #endif
-      
-      previousC = chuck.C;
-      return newThrottle;
-    } // checkCruiseReturn(Chuck chuck)
-
-    
-    // returns the throttle position appropriate for cruise
-    // This is called if C is down
-    // Theory of Operation:
-    //   checkAutoCruise: if looking to setting, don't change throttle
-    //   !C -> C: 
-    float cruiseControl(Chuck chuck) {
-      if (checkAutoCruise(chuck)) {                                  // setting auto cruise?
-        // we're looking for autoCruise, so do that;
-        // don't change the throttle position, just
-        // return throttle; fallthrough is OK
-      } else if (chuck.Y > 0.25) {                                   // accel?
-        // speed up, but not past 1.0 (full blast)
-        throttle += chuck.Y * THROTTLE_CC_BUMP;
-        throttle = min(throttle, 1.0);
-      } else if (chuck.Y < -0.25) {                                  // decel?
-        throttle += chuck.Y * THROTTLE_CC_BUMP;
-        throttle = max(throttle, 0.0);
-      } else if (throttle < autoCruise) {                            // auto cruise?
-        throttle += 4 * THROTTLE_CC_BUMP;
-      } 
-      return throttle;
-    } // float cruiseControl(void)
-    
     
   public:
     
     // constructor
     Throttle() {
-      smoother = Smoother();
+      upper =  new Smoover(THROTTLE_RISE, THROTTLE_FALL, 
+                           THROTTLE_SMOOTH, THROTTLE_MIN_BUMP);
+      downer = new Smoover(BRAKES_RISE, BRAKES_FALL,
+                           BRAKES_SMOOTH, BRAKES_MIN_BUMP);
+
+      cruiser = new Cruiser(THROTTLE_CC_RISE, THROTTLE_CC_FALL,   
+                            THROTTLE_CC_AUTO, EEPROM_AUTOCRUISE_ADDY);
+      braker =  new Cruiser(BRAKES_CC_RISE, BRAKES_CC_FALL,
+                            BRAKES_CC_AUTO, EEPROM_DRAGBRAKE_ADDY);
       throttle = 0;
-      autoCruise = THROTTLE_MIN_CC;
-      xCounter = 0;
     } // Throttle()
     
 
-    void init(void) {
-      readAutoCruise();
+    void init() {
+      upper->init();
+      downer->init();
+      cruiser->init();
+      braker->init();
+      zero();
     } // init()
-
     
     
     /*
-     * returns a smoothed float [-1 .. 1]
+     * returns a smoothed (rate-limited) float [-1 .. 1]
      *
      * Theory of Operation: identify the throttle position (joystick angle), 
      *   then return a smoothed representation
@@ -254,6 +146,12 @@ class Throttle {
      *   return a smoothed value from the throttle position (Z button: 4x less smoothed)
      */
     float update(Chuck chuck) {
+      #define CHUCK_C 1
+      #define CHUCK_Z 2
+      #define CHUCK_BOTH 3
+      #define CHUCK_NONE 0
+      static byte lastChuckButton = CHUCK_NONE;
+      
       #ifdef DEBUGGING_THROTTLE
       Serial.print("Throttle: ");
       Serial.print("y=");
@@ -261,33 +159,128 @@ class Throttle {
       Serial.print(", ");
       Serial.print("c=");
       Serial.print(chuck.C);
+      Serial.print(", z=");
+      Serial.print(chuck.Z);
+      Serial.print(", t=");
+      Serial.print(throttle, 4);
       Serial.print("; ");
       #endif
 
-      if (float newThrottle = checkCruiseReturn(chuck)) {
-        // CC return: in CC mode, drop C, then resume shortly after 
-        // (with no other input) -- resume the previous CC 
-        #ifdef DEBUGGING_THROTTLE
-        Serial.print(" resuming cruise: ");
-        Serial.print(newThrottle);
-        Serial.print(") ");
-        #endif         
-        throttle = newThrottle;
-      } else if (chuck.C) { 
-        // cruise control!
-        throttle = cruiseControl(chuck);
-        // don't actually use a smoothed throttle, but keep the smoother algorithm warm
-        // so when we drop the cruise, throttle (with stick @ 0) will "smooth" back to neutral
-        smoother.smooth(throttle, SMOOTHER_THROTTLE_PROGRAM);
-      } else if (chuck.Y < -THROTTLE_MIN) { 
-        // brakes!
-        throttle = smoother.smooth(chuck.Y, SMOOTHER_BRAKES_PROGRAM);
-      } else {
-        throttle = smoother.smooth(chuck.Y, (chuck.Z ? SMOOTHER_THROTTLE_Z_PROGRAM : SMOOTHER_THROTTLE_PROGRAM));
+/*
+      // set up ~sticky chuck buttons
+      //   note that the stick is allowed to be in the range [-THROTTLE_MIN .. THROTTLE_MIN] 
+      //   and still hit a button; buttons should work if it's in the dead zone, or in the 
+      //   correct rage.  For C, range [-THROTTE_MIN .. 1]; Z: [-1 .. THROTTLE_MIN]
+      if (lastChuckButton == CHUCK_NONE) {
+        if (chuck.C && !chuck.Z && chuck.Y > -THROTTLE_MIN) {
+          lastChuckButton = CHUCK_C;
+        } else if (chuck.Z && !chuck.C && chuck.Y < THROTTLE_MIN) {
+          lastChuckButton = CHUCK_Z;
+        } else if (abs(chuck.Y) <= max(cruiser->getAutoCruise(), braker->getAutoCruise()) 
+                   && chuck.C && chuck.Z) {
+          lastChuckButton = CHUCK_BOTH;
+        }
+      } else if (!chuck.C && !chuck.Z) {
+        lastChuckButton = CHUCK_NONE;
       }
-      
+*/
+      // buttons only react when you press one of them
+      // pressing both sticks to the most recent button
+      if (chuck.C && !chuck.Z) {
+        lastChuckButton = CHUCK_C;
+      } else if (chuck.Z && !chuck.C) {
+        lastChuckButton = CHUCK_Z;
+      } else if (!chuck.C && !chuck.Z) {
+        lastChuckButton = CHUCK_NONE;
+      } else if (abs(chuck.Y) <= max(cruiser->getAutoCruise(), braker->getAutoCruise()) 
+                 && abs(throttle) <= max(cruiser->getAutoCruise(), braker->getAutoCruise()) 
+                 && chuck.C && chuck.Z) {
+        lastChuckButton = CHUCK_BOTH;
+      }
+      // max(cruiser->getAutoCruise(), braker->getAutoCruise()) 
+
+
+
       #ifdef DEBUGGING_THROTTLE
-      Serial.print(F("throttle: "));
+      Serial.print(" button:");
+      if (lastChuckButton) {
+        Serial.print(lastChuckButton == CHUCK_C ? "C; " : "Z; ");
+      } else {
+        Serial.print("-; ");
+      }
+      #endif
+      
+      if (lastChuckButton == CHUCK_C) {
+        #ifdef DEBUGGING_THROTTLE
+        Serial.print(" -C- ");
+        #endif
+        throttle = cruiser->update(throttle, chuck.X, chuck.Y);
+        upper->rough(throttle);
+        downer->zero();
+      } else if (lastChuckButton == CHUCK_Z) {
+        #ifdef DEBUGGING_THROTTLE
+        Serial.print(" -Z- ");
+        #endif
+        throttle = -braker->update(-throttle, chuck.X, -chuck.Y);
+        downer->rough(abs(throttle));
+        upper->zero();
+      } else if (lastChuckButton == CHUCK_BOTH) {
+        #ifdef DEBUGGING_THROTTLE
+        Serial.print(" -!!- ");
+        #endif
+        throttle = chuck.Y;
+        upper->zero();
+        downer->zero();
+        cruiser->zero();
+        braker->zero();
+      } else if (chuck.Y > THROTTLE_MIN) {  
+        // gas
+        #ifdef DEBUGGING_THROTTLE
+        Serial.print(" -^- ");
+        #endif
+        if (throttle < THROTTLE_MIN) { 
+          // transition brakes -> gas
+          throttle = max(THROTTLE_MIN, cruiser->getAutoCruise());
+          upper->rough(throttle);
+        } else {
+          throttle = upper->smoove(chuck.Y);
+        }
+        downer->smoove(0);
+        // stick input resets cruise control
+        cruiser->zero();
+        braker->zero();
+      } else if (chuck.Y < -THROTTLE_MIN) {
+        // brakes
+        #ifdef DEBUGGING_THROTTLE
+        Serial.print(" -v- ");
+        #endif
+        if (throttle > -THROTTLE_MIN) {
+          // transition gas -> brakes
+          throttle = min(-THROTTLE_MIN, -braker->getAutoCruise());
+          downer->rough(abs(throttle));
+        } else {
+          throttle = -downer->smoove(abs(chuck.Y));
+        }
+        upper->smoove(0);
+        // stick input resets cruise control
+        cruiser->zero();
+        braker->zero();
+      } else {
+        #ifdef DEBUGGING_THROTTLE
+        Serial.print(" -=- ");
+        #endif
+
+        // coasting
+        cruiser->coast();
+        braker->coast();
+        // throttle = upper->smoove(0);
+        throttle = upper->smoove(throttle/2);
+        downer->smoove(0);
+        // throttle = smoove(0);
+      }
+
+      #ifdef DEBUGGING_THROTTLE
+      Serial.print(F(" throttle: "));
       Serial.println(throttle);
       #endif
 
@@ -302,7 +295,10 @@ class Throttle {
     
     void zero(void) {
       throttle = 0;
-      smoother.zero();
+      upper->zero();
+      downer->zero();
+      cruiser->zero();
+      braker->zero();
     } // void zero(void)
 
     

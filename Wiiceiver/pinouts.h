@@ -118,3 +118,9 @@ int pinLocation(int pinID) {
 #endif
   return pin;
 } // int pinLocation(int pinID)
+
+
+byte readSetting(int eeprom_addy, byte default_value) {
+  byte value = EEPROM.read(eeprom_addy);
+  return value == 255 ? default_value : value;
+} // byte readSetting(int eeprom_addy, byte default_value)

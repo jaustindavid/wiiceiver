@@ -205,7 +205,7 @@ public:
 
 
   void writeEEPROM() {
-    EEPROM.write(EEPROM_Y_ADDY, Y0);
+    EEPROM.update(EEPROM_Y_ADDY, Y0);
 #ifdef DEBUGGING_CHUCK
     Serial.print("Storing value: Y=");
     Serial.println(Y0);	

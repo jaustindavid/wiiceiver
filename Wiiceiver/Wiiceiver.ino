@@ -26,147 +26,65 @@
  * 12 May 2014
  *
  */
+ 
 
 #include <avr/wdt.h> 
 #include <Wire.h>
 #include <Servo.h>
 #include <EEPROM.h>
 
-#define WIICEIVER_VERSION "1.2.2"
+#define WIICEIVER_VERSION "2.0 experimental"
 
 // addys for vars stored in EEPROM
 #define EEPROM_Y_ADDY 0
 #define EEPROM_AUTOCRUISE_ADDY 1
 #define EEPROM_WDC_ADDY 2
-
+#define EEPROM_DRAGBRAKE_ADDY 3
+#define EEPROM_MINTHROTTLE_ADDY 4
+#define EEPROM_MAXTHROTTLE_ADDY 5
+#define EEPROM_ACCELPROFILE_ADDY 6
 
 #define DEBUGGING
 
-#include "Blinker.h"
+#include "watchdog.h"
 
+// #define DEBUGGING_PINS
+#include "pinouts.h"
+
+#include "Blinker.h"
 
 // #define DEBUGGING_CHUCK
 // #define DEBUGGING_CHUCK_ACTIVITY
 #define WII_ACTIVITY_COUNTER 100  // once per 20ms; 50 per second
 #include "Chuck.h"
 
-
-// #define DEBUGGING_ESC
+#define DEBUGGING_ESC
 #include "ElectronicSpeedController.h"
 
+// #define DEBUGGING_SMOOVER
+#include "Smoover.h"
 
-// #define DEBUGGING_SMOOTHER
-#define SMOOTHER_MIN_STEP 0.003           // minimum change for smoothing; 0.003 for ~1s, 0.001 for ~2s
-#define SMOOTHER_BRAKES_PROGRAM 0
-#define SMOOTHER_THROTTLE_PROGRAM 1
-#define SMOOTHER_THROTTLE_Z_PROGRAM 2
-#define SMOOTHER_CRUISE_RESUME_PROGRAM 3
-#include "Smoother.h"
-
-
-// #define DEBUGGING_THROTTLE
 #define THROTTLE_MIN 0.05                      // the lowest throttle to send the ESC
-#define THROTTLE_CC_BUMP 0.003                 // CC = 0.2% throttle increase; 50/s = 10s to hit 100% on cruise
-#define THROTTLE_MIN_CC 0.05                   // minimum / inital speed for cruise crontrol
-                                               // note that a different value may be stored in EEPROM
-#define THROTTLE_CRUISE_RETURN_MS 5000         // time (ms) when re-grabbing cruise will use the previous CC level
+
+// #define DEBUGGING_CRUISER
+#include "Cruiser.h"
+
+#define DEBUGGING_THROTTLE
 #include "Throttle.h"
 
 
-// #define DEBUGGING_PINS
-#include "pinouts.h"
-
+// global objects
 
 Chuck chuck;
 ElectronicSpeedController ESC;
 Blinker green, red;
 Throttle throttle;
 
-
-/********
- *  WATCHDOG STUFF
- * I referenced the following:
- * http://forum.arduino.cc/index.php?topic=63651.0
- * http://tushev.org/articles/arduino/item/46-arduino-and-watchdog-timer
- * http://www.ivoidwarranties.com/2012/02/arduino-mega-optiboot.html
- *
- ********/
- 
-/*
- * setup a watchdog timer for the given reset interval
- *
- * constants: WDTO_250MS, WDTO_8S, WDTO_60MS, etc
- */
-void watchdog_setup(byte wd_interval) {
-  wdt_reset();
-  wdt_enable(wd_interval);
-  cli();
-  WDTCSR |= (1<<WDCE) | (1<<WDE) | (1<<WDIE); 
-  sei();
-} // watchdog_setup(unsigned int wd_interval)
-
-
-// increment a _W_atch _D_og _C_ounter stored in EEPROM, for future debugging
-ISR(WDT_vect) {
-  byte wdt_counter = EEPROM.read(EEPROM_WDC_ADDY);
-  EEPROM.write(EEPROM_WDC_ADDY, wdt_counter + 1);
-} // ISR for the watchdog timer
-
-// display the current watchdog counter
-void display_WDC(void) {
-  byte wdt_counter = EEPROM.read(EEPROM_WDC_ADDY);
-  Serial.print("Watchdog Resets: ");
-  Serial.println((byte)(wdt_counter + 1));
-} // display_WDC()
+#define DEBUGGING_TUNA
+#include "tuna.h" // needs access to the global objects 
 
 
 
-// maybe calibrate the joystick:
-//   read the C button 250 times, once per 20ms (5s total); if it's constantly
-//   down, calibrate the joystick
-void maybeCalibrate(void) {
-  int ctr = 0;
-  int i = 0;
-
-  for (i = 0; i < 10; i++) {
-    chuck.update();
-    delay(10);
-  }
-  if (chuck.C != 1 || ! chuck.isActive()) {
-    return;
-  }
-
-  red.update(10);
-  green.update(10);
-  i = 0;
-  #define C_COUNT 50
-  while (i <= C_COUNT && chuck.C) {
-    chuck.update();
-    red.run();
-    green.run();
-    i++;
-    ctr += chuck.C;
-    delay(20);
-  }
-
-  #ifdef DEBUGGING
-  Serial.print("C ctr = ");
-  Serial.println(ctr);
-  #endif
-
-  if (ctr >= C_COUNT && chuck.isActive()) {
-    chuck.calibrateCenter();
-    chuck.writeEEPROM();
-    // side effect: reset the WDC
-    EEPROM.write(EEPROM_WDC_ADDY, 255);
-    Serial.println("Calibrated");
-  }
-
-  red.update(1);
-  green.update(1);
-} // void maybeCalibrate() 
-
-\
 // an unambiguous startup display
 void splashScreen() {
   int i;
@@ -190,14 +108,13 @@ void splashScreen() {
 
 
 // flash the LEDs to indicate throttle position
-void updateLEDs(Throttle throttle) {
-  if (throttle.getThrottle() == 0) {
+void updateLEDs(float throttlePos) {
+  if (abs(throttlePos) < THROTTLE_MIN) {
     green.update(1);
     red.update(1);
   } else {
-    int bps = abs(int(throttle.getThrottle() * 20));
-
-    if (throttle.getThrottle() > 0) {
+    int bps = constrain(abs(int(throttlePos * 20)), 1, 20);
+    if (throttlePos > 0) {
       green.update(bps);
       red.update(1);
     } else {
@@ -287,7 +204,7 @@ bool waitForActivity(void) {
   return chuck.isActive();
 } // bool waitForActivity()
 
-
+/*
 // dead code?
 void stopChuck() {
 #ifdef DEBUGGING
@@ -302,7 +219,7 @@ void stopChuck() {
   delay(250);
 } // stopChuck()
 
-
+*/
 
 // returns true if the chuck appears "active"
 // will retry 5 times, waiting 1s each
@@ -389,24 +306,21 @@ void setup() {
   ESC.init(pinLocation(ESC_PPM_ID), pinLocation(ESC2_PPM_ID));
   
   splashScreen();
-
-  // delay(5000); // hold for nunchuck powerup
+  showTunaSettings();
 
 #ifdef DEBUGGING
   Serial.println("Starting the nunchuck ...");
 #endif
   green.high();
   red.high();
-  if (startChuck()) {
-    maybeCalibrate();
-  } else {
+  if (! startChuck()) {
+ /*   maybeCalibrate();
+  } else {*/
     handleInactivity();
   }
 #ifdef DEBUGGING
   Serial.println("Nunchuck is active!");
 #endif
-
-  throttle.init();
 
   green.start(10);
   red.start(10);
@@ -414,7 +328,8 @@ void setup() {
   green.update(1);
   red.update(1);
   watchdog_setup(WDTO_250MS);
-} // void setup()
+  throttle.init();  
+} // setup()
 
 
 
@@ -425,6 +340,8 @@ void loop() {
   green.run();
   red.run();
   chuck.update();
+  
+  tuna();
   
   // for forcing a watchdog timeout
   #undef SUICIDAL_Z
@@ -445,7 +362,7 @@ void loop() {
     float throttleValue = throttle.update(chuck);
     ESC.setLevel(throttleValue);
     if (throttleValue != lastThrottleValue) {
-      updateLEDs(throttle);
+      updateLEDs(throttle.getThrottle());
 #ifdef DEBUGGING
       Serial.print("y=");
       Serial.print(chuck.Y, 4);
@@ -459,6 +376,9 @@ void loop() {
 #endif
       lastThrottleValue = throttleValue;
     }
+    
+    // smoove(chuck.Y);
+    
     int delayMS = constrain(startMS + 21 - millis(), 5, 20);
 #ifdef DEBUGGING_INTERVALS
     Serial.print("sleeping "); 
@@ -466,9 +386,5 @@ void loop() {
 #endif
     delay(delayMS);
   } // if (chuck.isActive())
-}
-
-
-
-
+} // loop()
 

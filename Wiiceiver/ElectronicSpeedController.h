@@ -42,6 +42,7 @@ private:
   bool dualESC;
   Servo _esc1, _esc2;
   int angle;                // the angle most recently written to _esc;
+  int angleCtr;
   int microseconds;         // the time (ms) most recently written
   unsigned long lastWrite;  // time in millis() when it was last written
 
@@ -49,6 +50,7 @@ public:
 
 void init(int pin1, int pin2) {
   angle = -1;
+  angleCtr = 0;
   lastWrite = 0;
 #ifdef DEBUGGING_ESC
   Serial.print("attaching to pin1 #");
@@ -67,14 +69,17 @@ void init(int pin1, int pin2) {
   
   
   delay(21);  // give the "last written" protection room to work
-#ifdef DEBUGGING_ESC
+#ifdef DEBUGGING
   Serial.println("initializing ESC...");
 #endif
 
-  syncESC();
+  // syncESC();
+  // calibrateESC();
+  // sync2();
+  sync3();
   setLevel(0);
   
-#ifdef DEBUGGING_ESC
+#ifdef DEBUGGING
   Serial.println("done");
 #endif
 } // void init(int pin)
@@ -98,17 +103,19 @@ void setLevel(float level) {
     newUs = 1500;
   }
   
+  /*
   if (lastWrite + 19 > millis()) {
 #ifdef DEBUGGING_ESC
     Serial.println("Too recently written; skipping");
 #endif
     return;
   } 
+  */
   if (newAngle != angle) {
 #ifdef DEBUGGING_ESC
     Serial.print(millis());
     Serial.print(F(": ESC old: "));
-    Serial.print(_esc.readMicroseconds());
+    Serial.print(_esc1.readMicroseconds());
     Serial.print(F("us; new angle: "));
     Serial.print(newAngle);
     Serial.print(F(" = "));
@@ -116,6 +123,7 @@ void setLevel(float level) {
     Serial.print(F("us"));
 #endif
     angle = newAngle;
+    angleCtr = 0;
     microseconds = newUs;
     _esc1.write(angle);
     if (dualESC) {
@@ -124,10 +132,14 @@ void setLevel(float level) {
     // _esc.writeMicroseconds(microseconds);
 #ifdef DEBUGGING_ESC
     Serial.print(F(": ESC now: "));
-    Serial.println(_esc.readMicroseconds());
+    Serial.println(_esc1.readMicroseconds());
 #endif
     
     lastWrite = millis();
+  } else {
+    if (angleCtr++ > 10) {
+      setLevel(level + 0.01);
+    }
   }
 } // void setLevel(float level)
 
@@ -153,7 +165,7 @@ private:
     setLevel(endLevel);
   } // sweep(float startLevel, float endLevel, float step)
 
-  
+  // http://electronics.stackexchange.com/questions/24826/activating-electronic-speed-control-with-arduino  
   // startup sequence: some small range of inputs, then idle
   void syncESC(void) {
     setLevel(0);
@@ -170,6 +182,27 @@ private:
     delay(100);
   } // void syncESC(void)
   
+  void sync2(void) {
+    setLevel(-1);
+    delay(3000);
+    setLevel(0);
+  }
+  
+  void sync3(void) {
+    setLevel(1);
+    delay(500);
+    setLevel(-1);
+    delay(500);
+    setLevel(0);
+  }
+  
+  void calibrateESC(void) {
+    setLevel(1);
+    delay(2000);
+    setLevel(-1);
+    delay(1000);
+    setLevel(0);
+  }
 };  // class ElectronicSpeedController 
 
 #endif
