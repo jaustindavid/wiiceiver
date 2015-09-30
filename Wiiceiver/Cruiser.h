@@ -110,7 +110,7 @@ class CruiseReturn {
 
 class Cruiser {
   private:
-    float rise, fall, previous, autoCruise, desiredRate;
+    float rise, default_rise, fall, default_fall, previous, autoCruise, desiredRate;
     int addy;
     int autocruiseSetCounter;
     unsigned long cruiseReturnTimer;
@@ -123,8 +123,8 @@ class Cruiser {
       zero();      
       autoCruise = autoCruise_;
       addy = addy_;
-      rise = rise_;
-      fall = fall_;
+      default_rise = rise_;
+      default_fall = fall_;
       autocruiseSetCounter = 0;
       state = CR_NORMAL;
       desiredRate = rise;
@@ -137,7 +137,21 @@ class Cruiser {
       #ifdef DEBUGGING
       Serial.print("Cruiser::init(): autoCruise=");
       Serial.println(autoCruise);
-      #endif     
+      #endif
+
+      float multiplier = getProfileMultiplier();
+      multiplier = constrain(multiplier, 0.5, 3);
+      rise = default_rise * multiplier;
+      fall = default_fall * multiplier;
+      #ifdef DEBUGGING
+      Serial.print("Cruiser::init(): profileMultiplier=");
+      Serial.print(multiplier);
+      Serial.print(", rise=");
+      Serial.print(rise, 4);
+      Serial.print(", fall=");
+      Serial.println(fall, 4);
+      #endif
+
     } // init()    
     
     

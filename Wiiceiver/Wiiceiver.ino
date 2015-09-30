@@ -27,13 +27,13 @@
  *
  */
  
-
+#include <Arduino.h>
 #include <avr/wdt.h> 
 #include <Wire.h>
 #include <Servo.h>
 #include <EEPROM.h>
 
-#define WIICEIVER_VERSION "2.0 experimental"
+#define WIICEIVER_VERSION "2.0 beta"
 
 // addys for vars stored in EEPROM
 #define EEPROM_Y_ADDY 0
@@ -49,7 +49,7 @@
 #include "watchdog.h"
 
 // #define DEBUGGING_PINS
-#include "pinouts.h"
+#include "utils.h"
 
 #include "Blinker.h"
 

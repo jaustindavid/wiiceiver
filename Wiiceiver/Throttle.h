@@ -274,9 +274,8 @@ class Throttle {
         cruiser->coast();
         braker->coast();
         // throttle = upper->smoove(0);
-        throttle = upper->smoove(throttle/2);
+        throttle = upper->smoove(throttle/4);
         downer->smoove(0);
-        // throttle = smoove(0);
       }
 
       #ifdef DEBUGGING_THROTTLE

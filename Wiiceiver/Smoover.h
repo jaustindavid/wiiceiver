@@ -41,6 +41,7 @@
       float rise, default_rise, fall, default_fall, exp_factor, min_step;
       float last, ceiling;
 
+
       /* 
        * very simple exponential smoothing algo...
        * ...
@@ -92,38 +93,12 @@
       
       // initialization: read vars from EEPROM
       void init(void) {
-        byte accelProfile = readSetting(EEPROM_ACCELPROFILE_ADDY, 2);
-        float multiplier = 1.0;
-        
-        switch (accelProfile) {
-          case 0: 
-            multiplier = 0.5;
-            break;
-          case 1:
-            multiplier = 0.75;
-            break;
-          case 3: 
-            multiplier = 1.25;
-            break;
-          case 4:
-            multiplier = 1.5;
-            break;
-          case 5:
-            multiplier = 2.0;
-            break;
-          case 6: // raw input, basically
-            multiplier = 100.0;
-            break;
-          case 2: // FALLTHROUGH
-          default:
-            multiplier = 1.0;
-            break;
-        }
+        float multiplier = getProfileMultiplier();
         rise = default_rise * multiplier;
         fall = default_fall * multiplier;
         #ifdef DEBUGGING
-        Serial.print("Smoother::init(): profile=");
-        Serial.print(accelProfile);
+        Serial.print("Smoother::init(): profileMultiplier=");
+        Serial.print(multiplier);
         Serial.print(", rise=");
         Serial.print(rise, 4);
         Serial.print(", fall=");
@@ -175,19 +150,16 @@
           #endif
         }
 
-        float expoed = expo(goal);
         #ifdef DEBUGGING_SMOOVER
         if (ceiling > 0) {
           Serial.print(" => c=");
           Serial.print(ceiling, 4);
           Serial.print(", g=");
-          Serial.print(goal, 4);
-          Serial.print(", e=");
-          Serial.println(expoed, 4);
+          Serial.println(goal, 4);
         }
         #endif
         
-        return expoed;
+        return goal;
       } // float smoove(target)
 
 
