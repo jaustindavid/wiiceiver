@@ -81,7 +81,7 @@ Blinker green, red;
 Throttle throttle;
 
 #define DEBUGGING_TUNA
-#include "tuna.h" // needs access to the global objects 
+#include "Tuna.h" // needs access to the global objects 
 
 
 
