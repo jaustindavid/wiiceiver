@@ -25,6 +25,8 @@ Wiiceiver also implements a few additional functions:
   algorithm to smooth the controller input.  As currently
   tuned, an instant 0-100% throttle input will result in a
   gradual change to the ESC over the course of about 1s.
+- 2.0 uses a "floating ceiling" for predictable acceleration
+  damping and more responsive throttle.
 
 It has been tested to work with a corded Nintendo nunchuck, a 
 Memorex wireless nunchuck, and a Nyko Kama wireless nunchuck.
