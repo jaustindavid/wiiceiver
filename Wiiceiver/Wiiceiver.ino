@@ -34,7 +34,7 @@
 #include <Servo.h>
 #include <EEPROM.h>
 
-#define WIICEIVER_VERSION "2.0 beta"
+#define WIICEIVER_VERSION "2.0 beta3"
 
 // define ALLOW_HELI_MODE to unlock the settable mode & functions
 #undef ALLOW_HELI_MODE

@@ -116,6 +116,7 @@ void ui_getThrottle(byte blinks, byte eeprom_addy, int sign) {
   flash(green, blinks);
   delay(1000);
   green.start(constrain(abs(throttle * 20), 1, 20));
+  ESC.setLevel(throttle);
   do {
     chuck.update();
     delay(20);
@@ -187,12 +188,6 @@ int ui_getValue(byte blinks, byte valueAddy, byte defaultValue, byte maxValue) {
 
 
 void showTunaSettings(void) {
-  /*
-  Serial.print("Min throttle: ");
-  Serial.println(readSetting(EEPROM_MINTHROTTLE_ADDY, 255));
-  Serial.print("Max throttle: ");
-  Serial.println(readSetting(EEPROM_MAXTHROTTLE_ADDY, 255));
-  */
   Serial.print(F("Heli mode: "));
   Serial.println(readSetting(EEPROM_HELI_MODE_ADDY, 255));
   #ifndef ALLOW_HELI_MODE
