@@ -156,7 +156,7 @@ void Blinker::_blink(int level) {
   digitalWrite(_led, level);
 #ifdef BLINKY_DEBUG
   Serial.print(level);
-  Serial.print(": next in Millis: ");
+  Serial.print(F(": next in Millis: "));
   Serial.println(_nextMillis);
 #endif
 } // void Blinker::_blink(int level)

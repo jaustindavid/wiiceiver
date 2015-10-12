@@ -67,11 +67,11 @@ class CruiseReturn {
     
     bool available() {
       #ifdef DEBUGGING_CRUISER
-      Serial.print("CR [");
+      Serial.print(F("CR ["));
       Serial.print(throttle);
-      Serial.print("] ");
+      Serial.print(F("] "));
       Serial.print(crTimer + CRUISER_RETURN);
-      Serial.print(" >? ");
+      Serial.print(F(" >? "));
       Serial.println(millis());
       #endif
       return (crTimer + CRUISER_RETURN) > millis();
@@ -81,9 +81,9 @@ class CruiseReturn {
     void update(void) {
       crTimer = millis();
       #ifdef DEBUGGING_CRUISER
-      Serial.print("CR <- ");
+      Serial.print(F("CR <- "));
       Serial.print(throttle);
-      Serial.print(" @ ");
+      Serial.print(F(" @ "));
       Serial.println(crTimer);
       #endif
     }
@@ -135,8 +135,8 @@ class Cruiser {
       // readAutoCruise();
       autoCruise = 0.01 * readSetting(addy, autoCruise*100);
       #ifdef DEBUGGING
-      Serial.print("Cruiser::init(): autoCruise=");
-      Serial.println(autoCruise);
+        Serial.print(F("Cruiser::init(): autoCruise="));
+        Serial.println(autoCruise);
       #endif
 
       float multiplier = getProfileMultiplier();
@@ -144,12 +144,12 @@ class Cruiser {
       rise = default_rise * multiplier;
       fall = default_fall * multiplier;
       #ifdef DEBUGGING
-      Serial.print("Cruiser::init(): profileMultiplier=");
-      Serial.print(multiplier);
-      Serial.print(", rise=");
-      Serial.print(rise, 4);
-      Serial.print(", fall=");
-      Serial.println(fall, 4);
+        Serial.print(F("Cruiser::init(): profileMultiplier="));
+        Serial.print(multiplier);
+        Serial.print(F(", rise="));
+        Serial.print(rise, 4);
+        Serial.print(F(", fall="));
+        Serial.println(fall, 4);
       #endif
 
     } // init()    
@@ -175,7 +175,7 @@ class Cruiser {
         state = CR_ACCEL;
       } else if (stickY < -0.25) {
         state = CR_DECEL;
-       } else if (previous == 0) {
+      } else if (previous == 0) {
         if (cr.available() && cr.getThrottle() > autoCruise) {
           state = CR_RETURNING;
         } else {
@@ -215,11 +215,11 @@ class Cruiser {
           newThrottle = min(newThrottle, 1.0);
           cr.update();  // update the time, but not the level
           #ifdef DEBUGGING_CRUISER
-          Serial.print("Return, trying cr=");
-          Serial.print(cr.getThrottle());
-          Serial.print(" -> ");
-          Serial.print("t=");
-          Serial.print(throttle);
+            Serial.print(F("Return, trying cr="));
+            Serial.print(cr.getThrottle());
+            Serial.print(F(" -> "));
+            Serial.print(F("t="));
+            Serial.print(throttle);
           #endif
         }
       } else if (state == CR_ACCEL) {
@@ -238,8 +238,8 @@ class Cruiser {
       }
       
       #ifdef DEBUGGING_CRUISER
-      Serial.print(" => nt=");
-      Serial.println(newThrottle);
+        Serial.print(F(" => nt="));
+        Serial.println(newThrottle);
       #endif 
       
       return previous = newThrottle;

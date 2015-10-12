@@ -105,6 +105,12 @@ class Throttle {
     Smoover *upper, *downer;
     Cruiser *cruiser, *braker;
 
+
+    // http://forum.arduino.cc/index.php?topic=3922.0
+    float mapfloat(float x, float in_min, float in_max, float out_min, float out_max) {
+      return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+    } // float mapfloat(x, in_min, in_max, out_min, out_max)
+
     
   public:
     
@@ -130,7 +136,7 @@ class Throttle {
       braker->init();
       zero();
     } // init()
-    
+
     
     /*
      * returns a smoothed (rate-limited) float [-1 .. 1]
@@ -140,10 +146,16 @@ class Throttle {
      *
      *   if C is pressed, "cruise control":
      *      set "cruise" to last joystick position
-     *      if joystick == up, increment throttle position (Z button: 3x increment)
-     *      if joystick == down, decrement throttle position  (Z button: 3x decrement)
+     *      if joystick == up, increment throttle position
+     *      if joystick == down, decrement throttle position
      *   else throttle position == chuck.Y joystick position
-     *   return a smoothed value from the throttle position (Z button: 4x less smoothed)
+     *   return a smoothed value from the throttle position
+     *   
+     *   "Z" is the same as C but upside-down & brakes
+     *   
+     *   if HELI_MODE: treat Z like dead-man switch; Z on == auto-cruise (slowest throttle)
+     *     to fake neutral.  Z off == lowest stick, which is either neutral or brake
+     *     on the ESC
      */
     float update(Chuck chuck) {
       #define CHUCK_C 1
@@ -153,39 +165,20 @@ class Throttle {
       static byte lastChuckButton = CHUCK_NONE;
       
       #ifdef DEBUGGING_THROTTLE
-      Serial.print("Throttle: ");
-      Serial.print("y=");
-      Serial.print(chuck.Y, 4);
-      Serial.print(", ");
-      Serial.print("c=");
-      Serial.print(chuck.C);
-      Serial.print(", z=");
-      Serial.print(chuck.Z);
-      Serial.print(", t=");
-      Serial.print(throttle, 4);
-      Serial.print("; ");
+        Serial.print(F("Throttle: "));
+        Serial.print(F("y="));
+        Serial.print(chuck.Y, 4);
+        Serial.print(F(", "));
+        Serial.print(F("c="));
+        Serial.print(chuck.C);
+        Serial.print(F(", z="));
+        Serial.print(chuck.Z);
+        Serial.print(F(", t="));
+        Serial.print(throttle, 4);
+        Serial.print(F("; "));
       #endif
 
-/*
-      // set up ~sticky chuck buttons
-      //   note that the stick is allowed to be in the range [-THROTTLE_MIN .. THROTTLE_MIN] 
-      //   and still hit a button; buttons should work if it's in the dead zone, or in the 
-      //   correct rage.  For C, range [-THROTTE_MIN .. 1]; Z: [-1 .. THROTTLE_MIN]
-      if (lastChuckButton == CHUCK_NONE) {
-        if (chuck.C && !chuck.Z && chuck.Y > -THROTTLE_MIN) {
-          lastChuckButton = CHUCK_C;
-        } else if (chuck.Z && !chuck.C && chuck.Y < THROTTLE_MIN) {
-          lastChuckButton = CHUCK_Z;
-        } else if (abs(chuck.Y) <= max(cruiser->getAutoCruise(), braker->getAutoCruise()) 
-                   && chuck.C && chuck.Z) {
-          lastChuckButton = CHUCK_BOTH;
-        }
-      } else if (!chuck.C && !chuck.Z) {
-        lastChuckButton = CHUCK_NONE;
-      }
-*/
-      // buttons only react when you press one of them
-      // pressing both sticks to the most recent button
+      // a sort of button debouncing
       if (chuck.C && !chuck.Z) {
         lastChuckButton = CHUCK_C;
       } else if (chuck.Z && !chuck.C) {
@@ -197,53 +190,93 @@ class Throttle {
                  && chuck.C && chuck.Z) {
         lastChuckButton = CHUCK_BOTH;
       }
-      // max(cruiser->getAutoCruise(), braker->getAutoCruise()) 
-
-
-
-      #ifdef DEBUGGING_THROTTLE
-      Serial.print(" button:");
-      if (lastChuckButton) {
-        Serial.print(lastChuckButton == CHUCK_C ? "C; " : "Z; ");
-      } else {
-        Serial.print("-; ");
-      }
+      
+      #ifdef DEBUGGING_THROTTLE_BUTTONS
+        Serial.print(F(" button:"));
+        if (lastChuckButton) {
+          Serial.print(lastChuckButton == CHUCK_C ? F("C; ") : F("Z; "));
+        } else {
+          Serial.print(F("-; "));
+        }
       #endif
       
       if (lastChuckButton == CHUCK_C) {
         #ifdef DEBUGGING_THROTTLE
-        Serial.print(" -C- ");
+          Serial.print(F(" -C- "));
         #endif
         throttle = cruiser->update(throttle, chuck.X, chuck.Y);
         upper->rough(throttle);
         downer->zero();
       } else if (lastChuckButton == CHUCK_Z) {
         #ifdef DEBUGGING_THROTTLE
-        Serial.print(" -Z- ");
+          Serial.print(F(" -Z- "));
         #endif
-        throttle = -braker->update(-throttle, chuck.X, -chuck.Y);
-        downer->rough(abs(throttle));
-        upper->zero();
+        #ifdef ALLOW_HELI_MODE
+          if (settings.HELI_MODE) {
+            #ifdef DEBUGGING_THROTTLE
+              Serial.print(F(" (heli) "));
+            #endif
+            // Z == dead-man switch: run at min throttle (or Y, whichever)
+            // similar behavior to throttle stick at auto-cruise or higher
+            // stick is normalized tho
+  
+            float newY = mapfloat(chuck.Y, THROTTLE_MIN, 1.0, cruiser->getAutoCruise(), 1.0);
+            // if throttle > y, coasting; smooth
+            // if throttle < MIN be rough
+            if (chuck.Y < -THROTTLE_MIN) {
+               #ifdef DEBUGGING_THROTTLE
+                Serial.print(F(" [t<0; brakes] "));
+              #endif
+              throttle = 0;
+              upper->rough(throttle);
+            } else if (throttle < cruiser->getAutoCruise()) {
+              #ifdef DEBUGGING_THROTTLE
+                Serial.print(F(" [t<cruise; idle, rough] "));
+              #endif
+              throttle = cruiser->getAutoCruise();
+              upper->rough(throttle);
+            } else if (throttle > newY && newY <= cruiser->getAutoCruise()) {
+              Serial.print(F(" [coasting; smoove down] "));
+              throttle = upper->smoove(throttle - (throttle - cruiser->getAutoCruise())*0.1);
+            } else {
+              Serial.print(F(" [active throttle; smoove] "));
+              throttle = upper->smoove(newY);
+            }
+            downer->smoove(0);
+            // Z == stick input, which resets cruise control
+            cruiser->zero();
+            braker->zero();
+          } else {
+         #else
+            // not heli; Z == drag brake
+            throttle = -braker->update(-throttle, chuck.X, -chuck.Y);
+            downer->rough(abs(throttle));
+            upper->zero();
+        #endif
+        #ifdef ALLOW_HELI_MODE
+          }
+        #endif
       } else if (lastChuckButton == CHUCK_BOTH) {
         #ifdef DEBUGGING_THROTTLE
-        Serial.print(" -!!- ");
+          Serial.print(F(" -!!- "));
         #endif
         throttle = chuck.Y;
-        upper->zero();
-        downer->zero();
+        upper->rough(throttle);
+        downer->rough(throttle);
         cruiser->zero();
         braker->zero();
       } else if (chuck.Y > THROTTLE_MIN) {  
         // gas
         #ifdef DEBUGGING_THROTTLE
-        Serial.print(" -^- ");
+          Serial.print(F(" -^- "));
         #endif
         if (throttle < THROTTLE_MIN) { 
           // transition brakes -> gas
           throttle = max(THROTTLE_MIN, cruiser->getAutoCruise());
           upper->rough(throttle);
         } else {
-          throttle = upper->smoove(chuck.Y);
+          float newY = mapfloat(chuck.Y, THROTTLE_MIN, 1.0, cruiser->getAutoCruise(), 1.0);
+          throttle = upper->smoove(newY);
         }
         downer->smoove(0);
         // stick input resets cruise control
@@ -252,35 +285,44 @@ class Throttle {
       } else if (chuck.Y < -THROTTLE_MIN) {
         // brakes
         #ifdef DEBUGGING_THROTTLE
-        Serial.print(" -v- ");
+        Serial.print(F(" -v- "));
         #endif
         if (throttle > -THROTTLE_MIN) {
           // transition gas -> brakes
           throttle = min(-THROTTLE_MIN, -braker->getAutoCruise());
           downer->rough(abs(throttle));
         } else {
-          throttle = -downer->smoove(abs(chuck.Y));
+          float newY = mapfloat(chuck.Y, -THROTTLE_MIN, -1.0, -braker->getAutoCruise(), -1.0);
+          #ifdef DEBUGGING_THROTTLE
+            Serial.print(F(" newY:"));
+            Serial.print(newY);
+            Serial.print(F(" "));
+          #endif
+          // throttle = -downer->smoove(abs(chuck.Y));
+          throttle = -downer->smoove(abs(newY));
         }
         upper->smoove(0);
         // stick input resets cruise control
         cruiser->zero();
         braker->zero();
       } else {
+        // coasting
         #ifdef DEBUGGING_THROTTLE
-        Serial.print(" -=- ");
+          Serial.print(F(" -=- "));
         #endif
 
-        // coasting
         cruiser->coast();
         braker->coast();
         // throttle = upper->smoove(0);
-        throttle = upper->smoove(throttle/4);
+        // drop throttle gently
+        throttle = upper->smoove(throttle*0.75);
+        // dump brakes immediately
         downer->smoove(0);
       }
 
       #ifdef DEBUGGING_THROTTLE
-      Serial.print(F(" throttle: "));
-      Serial.println(throttle);
+        Serial.print(F(" throttle: "));
+        Serial.println(throttle);
       #endif
 
       return throttle;

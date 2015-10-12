@@ -40,37 +40,6 @@
     private:
       float rise, default_rise, fall, default_fall, exp_factor, min_step;
       float last, ceiling;
-
-
-      /* 
-       * very simple exponential smoothing algo...
-       * ...
-       * uses a "minimum step" and caps @ goal
-       */
-      float expo(float goal) {
-        float increment, expoed;
-        increment = (goal - last) * exp_factor;
-        if (increment > 0) {
-          increment = max(min_step, increment);
-          expoed = min(last + increment, goal);
-        } else {
-          increment = min(-min_step, increment);
-          expoed = max(last + increment, goal);
-          #ifdef DEBUGGING_SMOOVER
-          Serial.print("expo(");
-          Serial.print(goal);
-          Serial.print("): last=");
-          Serial.print(last);
-          Serial.print(", incr=");
-          Serial.print(increment);
-          Serial.print(", exp=");
-          Serial.println(expoed);
-          #endif
-        }
-
-        last = expoed;        
-        return expoed;
-      } // float expo(float goal)
       
       
     public:
@@ -97,38 +66,55 @@
         rise = default_rise * multiplier;
         fall = default_fall * multiplier;
         #ifdef DEBUGGING
-        Serial.print("Smoother::init(): profileMultiplier=");
-        Serial.print(multiplier);
-        Serial.print(", rise=");
-        Serial.print(rise, 4);
-        Serial.print(", fall=");
-        Serial.println(fall, 4);
+          Serial.print(F("Smoother::init(): profileMultiplier="));
+          Serial.print(multiplier);
+          Serial.print(F(", rise="));
+          Serial.print(rise, 4);
+          Serial.print(F(", fall="));
+          Serial.println(fall, 4);
         #endif
       } // init()
       
        
+      /*
       
       // return the smooved value for target
+      *
+      * target is (generally) a stick position, [0..1]
+      * the returned value is a "smoothed" throttle, [0..1]
+      * 
+      * GENERALLY:
+      *   if the new value is under something we've seen recently
+      *   (the ceiling) move it quickly -- responsive throttle
+      *   because we're not accelerating hard.
+      *
+      *   if the value is above the ceiling (hard acceleration)
+      *   limit the "rate" of change (acceleration limit "rise")
+      *
+      *   The ceiling "falls" at a fixed rate; ideally this would
+      *   be the rate at which the board slows down naturally
+      */
       float smoove(float target) {
         float goal;
         
         #ifdef DEBUGGING_SMOOVER
-        if (ceiling > 0) {
-          Serial.print("Smoover: c=");
-          Serial.print(ceiling, 4);
-          Serial.print(", t=");
-          Serial.print(target, 4);
-        }
+          if (ceiling > 0) {
+            Serial.print(F("Smoover: c="));
+            Serial.print(ceiling, 4);
+            Serial.print(F(", t="));
+            Serial.print(target, 4);
+          }
         #endif
         if (target > (ceiling + rise)) {
           // increase ceiling as fast as "rise"; goal is pinned here
-          ceiling += rise;
+          // scale by target: smaller stick motion = smaller rate
+          ceiling += rise;  
           ceiling = min(ceiling, 1.0);
           goal = ceiling;
           #ifdef DEBUGGING_SMOOVER
-          if (ceiling > 0) {
-            Serial.print(" ^^ ");
-          }
+            if (ceiling > 0) {
+              Serial.print(F(" ^^ "));
+            }
           #endif
         } else if (target < (ceiling - fall)) {
           // decrease ceiling as fast as "fall"
@@ -137,26 +123,26 @@
           ceiling = max(ceiling, 0.0);
           goal = target;
           #ifdef DEBUGGING_SMOOVER
-          if (ceiling > 0) {
-            Serial.print(" vv ");
-          }
+            if (ceiling > 0) {
+              Serial.print(F(" vv "));
+            }
           #endif
         } else {
           goal = target;
           #ifdef DEBUGGING_SMOOVER
-          if (ceiling > 0) {
-            Serial.print(" == ");
-          }
+            if (ceiling > 0) {
+              Serial.print(F(" == "));
+            }
           #endif
         }
 
         #ifdef DEBUGGING_SMOOVER
-        if (ceiling > 0) {
-          Serial.print(" => c=");
-          Serial.print(ceiling, 4);
-          Serial.print(", g=");
-          Serial.println(goal, 4);
-        }
+          if (ceiling > 0) {
+            Serial.print(F(" => c="));
+            Serial.print(ceiling, 4);
+            Serial.print(F(", g="));
+            Serial.println(goal, 4);
+          }
         #endif
         
         return goal;
@@ -166,21 +152,21 @@
       // opposite of smoove
       void rough(float goal) {        
         #ifdef DEBUGGING_SMOOVER
-        if (ceiling > 0) {
-          Serial.print("Smoover::rough(");
-          Serial.print(goal, 4);
-          Serial.print(") => c=");
-          Serial.print(ceiling, 4);
-        }
+          if (ceiling > 0) {
+            Serial.print(F("Smoover::rough("));
+            Serial.print(goal, 4);
+            Serial.print(F(") => c="));
+            Serial.print(ceiling, 4);
+          }
         #endif
         
         last = ceiling = goal;
           
         #ifdef DEBUGGING_SMOOVER
-        if (ceiling > 0) {
-          Serial.print("; now c=");
-          Serial.println(ceiling, 4);
-        }
+          if (ceiling > 0) {
+            Serial.print(F("; now c="));
+            Serial.println(ceiling, 4);
+          }
         #endif
       } // float rough(goal)
 

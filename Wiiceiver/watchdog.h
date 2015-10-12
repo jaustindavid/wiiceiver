@@ -30,6 +30,8 @@
 #ifndef WATCHDOG_H
 #define WATCHDOG_H
 
+#include <Arduino.h>
+
 /********
  *  WATCHDOG STUFF
  * I referenced the following:
@@ -63,7 +65,7 @@ ISR(WDT_vect) {
 // display the current watchdog counter
 void display_WDC(void) {
   byte wdt_counter = EEPROM.read(EEPROM_WDC_ADDY);
-  Serial.print("Watchdog Resets: ");
+  Serial.print(F("Watchdog Resets: "));
   Serial.println((byte)(wdt_counter + 1));
 } // display_WDC()
 

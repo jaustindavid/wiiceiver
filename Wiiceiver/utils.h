@@ -61,6 +61,11 @@
 #define WII_SDA_ID   5
 
 
+typedef struct Settings {
+  byte HELI_MODE = 0;
+};
+Settings settings;
+
  
 int CSEL = -1;
 void chipSelect (void) {
@@ -80,7 +85,7 @@ void chipSelect (void) {
   }
   
 #ifdef DEBUGGING_PINS
-    Serial.print("Smells like v");
+    Serial.print(F("Smells like v"));
     Serial.println(CSEL);
 #endif
 }
@@ -108,14 +113,14 @@ int pinLocation(int pinID) {
   }
   
   int pin = pinMap[pinID][CSEL];
-#ifdef DEBUGGING_PINS
-  Serial.print("pin location: [");
-  Serial.print(pinID);
-  Serial.print("][");
-  Serial.print(CSEL);
-  Serial.print("] == ");
-  Serial.println(pin);
-#endif
+  #ifdef DEBUGGING_PINS
+    Serial.print(F("pin location: ["));
+    Serial.print(pinID);
+    Serial.print(F("]["));
+    Serial.print(CSEL);
+    Serial.print(F("] == "));
+    Serial.println(pin);
+  #endif
   return pin;
 } // int pinLocation(int pinID)
 
@@ -160,3 +165,16 @@ float getProfileMultiplier(void) {
     }
     return multiplier;
 } // float getProfileMultiplier()
+
+
+void readSettings(void) {
+  #ifdef ALLOW_HELI_MODE
+    settings.HELI_MODE = readSetting(EEPROM_HELI_MODE_ADDY, 0);
+    if (settings.HELI_MODE) {
+      Serial.println(F("HELI MODE"));
+    }
+  #else
+    settings.HELI_MODE = 0;
+  #endif
+} // readSettings()
+

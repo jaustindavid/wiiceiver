@@ -109,11 +109,12 @@ void calibrateChuck(void) {
 } // calibrateChuck()
 
 
-void ui_getThrottle(int eeprom_addy, int blinks, int sign) {
+void ui_getThrottle(byte blinks, byte eeprom_addy, int sign) {
   float throttle = 0.01 * readSetting(eeprom_addy, 0) * sign;
-  Serial.print("UI: get throttle #");
+  Serial.print(F("UI: get throttle #"));
   Serial.println(blinks);
   flash(green, blinks);
+  delay(1000);
   green.start(constrain(abs(throttle * 20), 1, 20));
   do {
     chuck.update();
@@ -129,9 +130,9 @@ void ui_getThrottle(int eeprom_addy, int blinks, int sign) {
     } 
     
   } while (!chuck.C);
-  Serial.print("Saving throttle #");
+  Serial.print(F("Saving throttle #"));
   Serial.print(blinks);
-  Serial.print(" = ");
+  Serial.print(F(" = "));
   Serial.println(throttle);
   EEPROM.update(eeprom_addy, 100*abs(throttle));
   ESC.setLevel(0);
@@ -143,42 +144,46 @@ void ui_getThrottle(int eeprom_addy, int blinks, int sign) {
 
 
 
-// NOTE: the profile # flashed is +1, can't flash "0" times :/
-void ui_accelprofile(int blinks) {
-  int profile = readSetting(EEPROM_ACCELPROFILE_ADDY, 2);
-  Serial.println("UI: acceleration profile");
+// NOTE: the value # flashed is +1, can't flash "0" times :/
+int ui_getValue(byte blinks, byte valueAddy, byte defaultValue, byte maxValue) {
+  int newValue = readSetting(valueAddy, defaultValue);
+  Serial.print(F("getting value #"));
+  Serial.println(blinks);
   flash(green, blinks);
   delay(1000);
-  flash(green, profile+1);
+  flash(green, newValue+1);
   do {
     chuck.update();
     if (chuck.Y > 0.5) {
-      profile ++;
-      if (profile >= 7) {
-        profile = 0;
+      newValue ++;
+      if (newValue > maxValue) {
+        newValue = 0;
       }
-      flash(green, profile+1);
+      flash(green, newValue+1);
       delay(20);
       chuck.update();
     } else if (chuck.Y < -0.5) {
-      profile --;
-      if (profile < 0) {
-        profile = 6;
+      newValue --;
+      if (newValue < 0) {
+        newValue = maxValue;
       }
-      flash(green, profile+1);
+      flash(green, newValue+1);
       delay(20);
       chuck.update();
     }
     delay(20);
   } while (!chuck.C);
-  Serial.print("Saving accel profile #");
-  Serial.println(profile);
-  EEPROM.update(EEPROM_ACCELPROFILE_ADDY, profile);
+  Serial.print(F("Saving value #"));
+  Serial.print(blinks);
+  Serial.print(F(" as "));
+  Serial.println(newValue);
+  EEPROM.update(valueAddy, newValue);
   green.high();
   flash(red, blinks);
   red.high();
   delay(1000);
-}
+  return newValue;
+} // int ui_getValue(byte blinks, byte defaultValue)
 
 
 void showTunaSettings(void) {
@@ -188,11 +193,16 @@ void showTunaSettings(void) {
   Serial.print("Max throttle: ");
   Serial.println(readSetting(EEPROM_MAXTHROTTLE_ADDY, 255));
   */
-  Serial.print("Auto cruise: ");
+  Serial.print(F("Heli mode: "));
+  Serial.println(readSetting(EEPROM_HELI_MODE_ADDY, 255));
+  #ifndef ALLOW_HELI_MODE
+    Serial.println("Heli mode disabled");
+  #endif 
+  Serial.print(F("Auto cruise: "));
   Serial.println(readSetting(EEPROM_AUTOCRUISE_ADDY, 255));
-  Serial.print("Drag brake: ");
+  Serial.print(F("Drag brake: "));
   Serial.println(readSetting(EEPROM_DRAGBRAKE_ADDY, 255));
-  Serial.print("Acceleration profile: ");
+  Serial.print(F("Acceleration profile: "));
   Serial.println(readSetting(EEPROM_ACCELPROFILE_ADDY, 255));
 } // showTunaSettings()
 
@@ -203,13 +213,16 @@ void do_ui() {
   green.high();
   ui_checkreset();  // may never actually return ...
   calibrateChuck();
-  // ui_getThrottle(EEPROM_MINTHROTTLE_ADDY, 1, 1);
-  // ui_getThrottle(EEPROM_MAXTHROTTLE_ADDY, 2, 1);
-  ui_getThrottle(EEPROM_AUTOCRUISE_ADDY, 3, 1);
-  ui_getThrottle(EEPROM_DRAGBRAKE_ADDY, 4, -1);
-  ui_accelprofile(5);
+
+  #ifdef ALLOW_HELI_MODE
+    ui_getValue(1, EEPROM_HELI_MODE_ADDY, 0, 1);    // HELI_MODE ranges 0..1; default 0
+  #endif
+  ui_getThrottle(3, EEPROM_AUTOCRUISE_ADDY, 1);
+  ui_getThrottle(4, EEPROM_DRAGBRAKE_ADDY, -1);
+  ui_getValue(5, EEPROM_ACCELPROFILE_ADDY, 2, 6); // accel profile 0..6; default 2
   flash(red, green, 10);
   showTunaSettings();
+  readSettings();
   throttle.init();
 } // do_ui()
 
@@ -232,7 +245,7 @@ void tuna() {
     return;
   }
   
-  Serial.println("Tuning!");
+  Serial.println(F("Tuning!"));
   
   wdt_disable();
   red.stop();

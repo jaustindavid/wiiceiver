@@ -38,6 +38,7 @@ class ElectronicSpeedController {
 #define ESC_CENTER 90       // angle of the "center"; probably always 90
 #define ESC_MAX_ANGLE 180   // angle of "max" deflection
 
+
 private:
   bool dualESC;
   Servo _esc1, _esc2;
@@ -48,104 +49,97 @@ private:
 
 public:
 
-void init(int pin1, int pin2) {
-  angle = -1;
-  angleCtr = 0;
-  lastWrite = 0;
-#ifdef DEBUGGING_ESC
-  Serial.print("attaching to pin1 #");
-  Serial.println(pin1);
-  Serial.print(", pin2 #");
-  Serial.print(pin2);
-#endif
-  _esc1.attach(pin1, 1000, 2000);
-  if (pin2) {
-    dualESC = true;
-    _esc2.attach(pin2, 1000, 2000);
-    Serial.println("Dual ESC!");
-  } else {
-    dualESC = false;
-  }
-  
-  
-  delay(21);  // give the "last written" protection room to work
-#ifdef DEBUGGING
-  Serial.println("initializing ESC...");
-#endif
-
-  // syncESC();
-  // calibrateESC();
-  // sync2();
-  sync3();
-  setLevel(0);
-  
-#ifdef DEBUGGING
-  Serial.println("done");
-#endif
-} // void init(int pin)
-
-
-/*
- * input: -1 .. 1
- * output: writes +/- ESC_MAX_ANGLE to _esc
- * does *not* write the same angle twice -- possible interference with the PWM :(
- * Servo will continually pulse the last-written angle
- */
-void setLevel(float level) {
-  int newAngle = (int)(ESC_CENTER + (ESC_MAX_ANGLE - ESC_CENTER) * level);
-  /* proably dead: attempt to drive usecs to game throttle positions */
-  int newUs;
-  if (level > 0) {
-    newUs = (int)(1600 + (2000 - 1600) * level);
-  } else if (level < 0) {
-    newUs = (int)(1400 + (2000 - 1400) * level);
-  } else {
-    newUs = 1500;
-  }
-  
-  /*
-  if (lastWrite + 19 > millis()) {
-#ifdef DEBUGGING_ESC
-    Serial.println("Too recently written; skipping");
-#endif
-    return;
-  } 
-  */
-  if (newAngle != angle) {
-#ifdef DEBUGGING_ESC
-    Serial.print(millis());
-    Serial.print(F(": ESC old: "));
-    Serial.print(_esc1.readMicroseconds());
-    Serial.print(F("us; new angle: "));
-    Serial.print(newAngle);
-    Serial.print(F(" = "));
-    Serial.print(newUs);
-    Serial.print(F("us"));
-#endif
-    angle = newAngle;
+  void init(int pin1, int pin2) {
+    angle = -1;
     angleCtr = 0;
-    microseconds = newUs;
-    _esc1.write(angle);
-    if (dualESC) {
-      _esc2.write(angle);
+    lastWrite = 0;
+    #ifdef DEBUGGING_ESC
+      Serial.print("attaching to pin1 #");
+      Serial.println(pin1);
+      Serial.print(", pin2 #");
+      Serial.print(pin2);
+    #endif
+    _esc1.attach(pin1, 1000, 2000);
+    if (pin2) {
+      dualESC = true;
+      _esc2.attach(pin2, 1000, 2000);
+      Serial.println("Dual ESC!");
+    } else {
+      dualESC = false;
     }
-    // _esc.writeMicroseconds(microseconds);
-#ifdef DEBUGGING_ESC
-    Serial.print(F(": ESC now: "));
-    Serial.println(_esc1.readMicroseconds());
-#endif
     
-    lastWrite = millis();
-  } else {
-    if (angleCtr++ > 10) {
-      setLevel(level + 0.01);
+    
+    delay(21);  // give the "last written" protection room to work
+    #ifdef DEBUGGING
+      Serial.println("initializing ESC...");
+    #endif
+  
+    // syncESC();
+    // calibrateESC();
+    // sync2();
+    sync3();
+    setLevel(0);
+    
+    #ifdef DEBUGGING
+      Serial.println("done");
+    #endif
+  } // void init(int pin)
+
+
+  /*
+   * input: -1 .. 1
+   * output: writes +/- ESC_MAX_ANGLE to _esc
+   * does *not* write the same angle twice -- possible interference with the PWM :(
+   * Servo will continually pulse the last-written angle anyway
+   * 
+   * HELI_ESC: 
+   *   -1 .. 0 => angle 0
+   *    0 .. 1 => angle 0 .. 180
+   */
+  void setLevel(float level) {  
+    int newAngle = (int)(ESC_CENTER + (ESC_MAX_ANGLE - ESC_CENTER) * level);
+    #ifdef ALLOW_HELI_MODE
+      if (settings.HELI_MODE) {
+        if (level <= 0) {
+          newAngle = 0;
+        } else {
+          newAngle = (int)(ESC_MAX_ANGLE * level);
+        }
+      }
+    #endif
+
+    if (newAngle != angle) {
+      #ifdef DEBUGGING_ESC
+        Serial.print(millis());
+        Serial.print(F(": ESC old: "));
+        Serial.print(_esc1.readMicroseconds());
+        Serial.print(F("us; new angle: "));
+        Serial.print(newAngle);
+        Serial.print(F(" = "));
+      #endif
+      angle = newAngle;
+      angleCtr = 0;
+      _esc1.write(angle);
+      if (dualESC) {
+        _esc2.write(angle);
+      }
+      #ifdef DEBUGGING_ESC
+          Serial.print(F(": ESC now: "));
+          Serial.println(_esc1.readMicroseconds());
+      #endif
+      
+      lastWrite = millis();
+    } else {
+      if (angleCtr++ > 10) {
+        setLevel(level + 0.01);
+      }
     }
-  }
-} // void setLevel(float level)
+  } // void setLevel(float level)
 
 
 private:
 
+/* DEAD CODE
 #define STEP_DELAY 20
 #define SYNC_LIMIT 0.6
 
@@ -164,6 +158,7 @@ private:
     }
     setLevel(endLevel);
   } // sweep(float startLevel, float endLevel, float step)
+*/
 
   // http://electronics.stackexchange.com/questions/24826/activating-electronic-speed-control-with-arduino  
   // startup sequence: some small range of inputs, then idle

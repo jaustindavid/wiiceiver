@@ -28,12 +28,17 @@
  */
  
 #include <Arduino.h>
+
 #include <avr/wdt.h> 
 #include <Wire.h>
 #include <Servo.h>
 #include <EEPROM.h>
 
 #define WIICEIVER_VERSION "2.0 beta"
+
+// define ALLOW_HELI_MODE to unlock the settable mode & functions
+#undef ALLOW_HELI_MODE
+// leaving it undefined removes all the CODE at compile-time
 
 // addys for vars stored in EEPROM
 #define EEPROM_Y_ADDY 0
@@ -43,13 +48,16 @@
 #define EEPROM_MINTHROTTLE_ADDY 4
 #define EEPROM_MAXTHROTTLE_ADDY 5
 #define EEPROM_ACCELPROFILE_ADDY 6
+#define EEPROM_HELI_MODE_ADDY 7
 
 #define DEBUGGING
 
 #include "watchdog.h"
 
 // #define DEBUGGING_PINS
+
 #include "utils.h"
+
 
 #include "Blinker.h"
 
@@ -58,7 +66,7 @@
 #define WII_ACTIVITY_COUNTER 100  // once per 20ms; 50 per second
 #include "Chuck.h"
 
-#define DEBUGGING_ESC
+// #define DEBUGGING_ESC
 #include "ElectronicSpeedController.h"
 
 // #define DEBUGGING_SMOOVER
@@ -69,7 +77,7 @@
 // #define DEBUGGING_CRUISER
 #include "Cruiser.h"
 
-#define DEBUGGING_THROTTLE
+// #define DEBUGGING_THROTTLE
 #include "Throttle.h"
 
 
@@ -187,7 +195,7 @@ bool waitForActivity(void) {
   unsigned long timer = millis() + 1000;
 #ifdef DEBUGGING
     Serial.print(millis());
-    Serial.print(" Waiting for activity ... ");
+    Serial.print(F(" Waiting for activity ... "));
 #endif
   
   chuck.update();
@@ -198,28 +206,12 @@ bool waitForActivity(void) {
   }
 #ifdef DEBUGGING
     Serial.print(millis());
-    Serial.println(chuck.isActive() ? ": active!" : ": not active :(");
+    Serial.println(chuck.isActive() ? F(": active!") : F(": not active :("));
 #endif
   
   return chuck.isActive();
 } // bool waitForActivity()
 
-/*
-// dead code?
-void stopChuck() {
-#ifdef DEBUGGING
-    Serial.println("Nunchuck: power off");
-#endif
-  digitalWrite(pinLocation(WII_POWER_ID), LOW);
-  delay(250);
-#ifdef DEBUGGING
-    Serial.println("Nunchuck: power on");
-#endif
-  digitalWrite(pinLocation(WII_POWER_ID), HIGH);
-  delay(250);
-} // stopChuck()
-
-*/
 
 // returns true if the chuck appears "active"
 // will retry 5 times, waiting 1s each
@@ -228,7 +220,7 @@ bool startChuck() {
   
   while (tries < 10) {
 #ifdef DEBUGGING
-    Serial.print("(Re)starting the nunchuck: #");
+    Serial.print(F("(Re)starting the nunchuck: #"));
     Serial.println(tries);
 #endif
     wdt_reset();
@@ -248,7 +240,7 @@ void handleInactivity() {
   watchdog_setup(WDTO_8S);
 #ifdef DEBUGGING
   Serial.print(millis());
-  Serial.println(": handling inactivity");
+  Serial.println(F(": handling inactivity"));
 #endif
   // lastThrottle = 0; // kills cruise control
   // smoother.zero();  // kills throttle history
@@ -268,7 +260,7 @@ void handleInactivity() {
   // active -- now wait for zero
 #ifdef DEBUGGING
   Serial.print(millis());
-  Serial.println("Waiting for 0");
+  Serial.println(F("Waiting for 0"));
 #endif  
   while (chuck.Y > 0.1 || chuck.Y < -0.1) {
     chuck.update();
@@ -278,7 +270,7 @@ void handleInactivity() {
   
 #ifdef DEBUGGING
   Serial.print(millis());
-  Serial.println(": finished inactivity -- chuck is active");
+  Serial.println(F(": finished inactivity -- chuck is active"));
 #endif
   watchdog_setup(WDTO_250MS);
 } // handleInactivity()
@@ -290,14 +282,15 @@ void setup() {
   wdt_disable();
   Serial.begin(115200);
 
-  Serial.print("Wiiceiver v ");
-  Serial.print(WIICEIVER_VERSION);
-  Serial.print(" (compiled ");
-  Serial.print(__DATE__);
-  Serial.print(" ");
-  Serial.print(__TIME__);
-  Serial.println(")");
-  display_WDC();
+  Serial.print(F("Wiiceiver v "));
+  Serial.print(F(WIICEIVER_VERSION));
+  Serial.print(F(" (compiled "));
+  Serial.print(F(__DATE__));
+  Serial.print(F(" "));
+  Serial.print(F(__TIME__));
+  Serial.println(F(")"));
+  display_WDC();  
+  readSettings();
   
   green.init(pinLocation(GREEN_LED_ID));
   red.init(pinLocation(RED_LED_ID));
@@ -309,7 +302,7 @@ void setup() {
   showTunaSettings();
 
 #ifdef DEBUGGING
-  Serial.println("Starting the nunchuck ...");
+  Serial.println(F("Starting the nunchuck ..."));
 #endif
   green.high();
   red.high();
@@ -319,7 +312,7 @@ void setup() {
     handleInactivity();
   }
 #ifdef DEBUGGING
-  Serial.println("Nunchuck is active!");
+  Serial.println(F("Nunchuck is active!"));
 #endif
 
   green.start(10);
@@ -340,51 +333,49 @@ void loop() {
   green.run();
   red.run();
   chuck.update();
-  
+
+  // check for the tuning UI
   tuna();
   
-  // for forcing a watchdog timeout
+  // for forcing a watchdog timeout (testing)
   #undef SUICIDAL_Z
   #ifdef SUICIDAL_Z
-  if (chuck.Z) {
-    Serial.println("sleepin' to reset");
-    delay(9000);
-  } // suicide!
-  
-  
+    if (chuck.Z) {
+      Serial.println(F("sleepin' to reset"));
+      delay(9000);
+    } // suicide!
   #endif 
+
   if (!chuck.isActive()) {
-#ifdef DEBUGGING
-    Serial.println("INACTIVE!!");
-#endif
+    #ifdef DEBUGGING
+      Serial.println(F("INACTIVE!!"));
+    #endif
     handleInactivity();
   } else {
     float throttleValue = throttle.update(chuck);
     ESC.setLevel(throttleValue);
     if (throttleValue != lastThrottleValue) {
       updateLEDs(throttle.getThrottle());
-#ifdef DEBUGGING
-      Serial.print("y=");
-      Serial.print(chuck.Y, 4);
-      Serial.print(", ");
-      Serial.print("c=");
-      Serial.print(chuck.C);      
-      Serial.print(", z=");
-      Serial.print(chuck.Z);
-      Serial.print(", ");
-      Serial.println(throttleValue, 4); 
-#endif
+      #ifdef DEBUGGING
+        Serial.print(F("y="));
+        Serial.print(chuck.Y, 4);
+        Serial.print(F(", "));
+        Serial.print(F("c="));
+        Serial.print(chuck.C);      
+        Serial.print(F(", z="));
+        Serial.print(chuck.Z);
+        Serial.print(F(", "));
+        Serial.println(throttleValue, 4); 
+      #endif
       lastThrottleValue = throttleValue;
-    }
-    
-    // smoove(chuck.Y);
+    } // if (throttleValue != lastThrottleValue)
     
     int delayMS = constrain(startMS + 21 - millis(), 5, 20);
-#ifdef DEBUGGING_INTERVALS
-    Serial.print("sleeping "); 
-    Serial.println(delayMS);
-#endif
+    #ifdef DEBUGGING_INTERVALS
+      Serial.print(F("sleeping ")); 
+      Serial.println(delayMS);
+    #endif
     delay(delayMS);
-  } // if (chuck.isActive())
+  } // if (!chuck.isActive()) - else
 } // loop()
 
