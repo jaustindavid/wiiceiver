@@ -195,18 +195,19 @@ int ui_getValue(byte blinks, byte valueAddy, byte defaultValue, byte maxValue) {
 
 
 void showTunaSettings(void) {
-  Serial.print(F("Heli mode: [1 = off, 2 = on]"));
-  Serial.println(readSetting(EEPROM_HELI_MODE_ADDY, 255));
   #ifndef ALLOW_HELI_MODE
     Serial.println("Heli mode disabled");
+  #else
+    Serial.print(F("Heli mode: [1 = off, 2 = on]: "));
+    Serial.println(readSetting(EEPROM_HELI_MODE_ADDY, 255));
   #endif 
-  Serial.print(F("Max throttle: [use up/down]"));
-  Serial.println(readSetting(EEPROM_MAXTHROTTLE_ADDY, 255));
-  Serial.print(F("Auto cruise: [press up until the motors start, then down to get the slowest motion]"));
-  Serial.println(readSetting(EEPROM_AUTOCRUISE_ADDY, 255));
-  Serial.print(F("Drag brake: [press down until you feel the brakes just start to kick in]"));
-  Serial.println(readSetting(EEPROM_DRAGBRAKE_ADDY, 255));
-  Serial.print(F("Acceleration profile: [1:0.25x, 2:0.5x, 3:0.75x, 4:1.0x (default) 5:1.5x, 6:2.0x, 7:raw]"));
+  Serial.print(F("Max throttle: [0..1x]: "));
+  Serial.println((float)readSetting(EEPROM_MAXTHROTTLE_ADDY, 255)/100, 2);
+  Serial.print(F("Auto cruise: [0..1x]: "));
+  Serial.println((float)readSetting(EEPROM_AUTOCRUISE_ADDY, 255)/100, 2);
+  Serial.print(F("Drag brake: [0..1x]: "));
+  Serial.println((float)readSetting(EEPROM_DRAGBRAKE_ADDY, 255)/100, 2);
+  Serial.print(F("Acceleration profile: [1:0.25x, 2:0.5x, 3:0.75x, 4:1.0x (default) 5:1.5x, 6:2.0x, 7:raw]: "));
   Serial.println(readSetting(EEPROM_ACCELPROFILE_ADDY, 255));
 } // showTunaSettings()
 

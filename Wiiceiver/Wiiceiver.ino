@@ -37,7 +37,8 @@
 #define WIICEIVER_VERSION "2.0 beta4"
 
 // define ALLOW_HELI_MODE to unlock the settable mode & functions
-#define ALLOW_HELI_MODE
+// #define ALLOW_HELI_MODE
+#undef ALLOW_HELI_MODE
 // leaving it undefined removes all the CODE at compile-time
 
 // addys for vars stored in EEPROM
@@ -72,7 +73,7 @@
 // #define ESC_JITTER
 #include "ElectronicSpeedController.h"
 
-#define DEBUGGING_SMOOVER
+// #define DEBUGGING_SMOOVER
 #include "Smoover.h"
 
 #define THROTTLE_MIN 0.05                      // the lowest throttle to send the ESC

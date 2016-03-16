@@ -175,7 +175,7 @@
       // similar to a conditional rough(goal)
       float prime(float goal) {
         if (ceiling < goal) {
-          last = ceiling = goal;
+          rough(goal);
         }
       } // float prime(goal)
 
