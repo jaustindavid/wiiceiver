@@ -49,19 +49,19 @@ void factory_reset(void) {
     EEPROM.update(addy, 255);
   }
   watchdog_setup(WDTO_250MS);
-  delay(500);  // watchdog should fire & restart the whole thing
+  DELAY(500);  // watchdog should fire & restart the whole thing
 } // factory_reset()
 
 
 void flash(Blinker led, byte nr_flashes) {
   for (byte i = 0; i < nr_flashes; i++) {
     led.low();
-    delay(150);
+    DELAY(150);
     led.high();
-    delay(250);
+    DELAY(250);
   }
   led.low();
-  delay(200);  
+  DELAY(200);  
 } // flash(led, nr_flashes)
 
 
@@ -69,14 +69,14 @@ void flash(Blinker led1, Blinker led2, byte nr_flashes) {
   for (byte i = 0; i < nr_flashes; i++) {
     led1.low();
     led2.low();
-    delay(150);
+    DELAY(150);
     led1.high();
     led2.high();
-    delay(250);
+    DELAY(250);
   }
   led1.low();
   led2.low();
-  delay(200);  
+  DELAY(200);  
 } // flash(led1, led2, nr_flashes)
 
 
@@ -92,14 +92,14 @@ void ui_checkreset(void) {
       red.low();
     }
     chuck.update();
-    delay(200);
+    DELAY(200);
     if (ctr > 25) {
       factory_reset(); // never returns
     }
   } while (chuck.C && chuck.Z);
   red.high();
   green.high();
-  delay(500);
+  DELAY(500);
 } // ui_checkreset()
 
 
@@ -114,19 +114,19 @@ void ui_getThrottle(byte blinks, byte eeprom_addy, int sign, byte defaultValue) 
   Serial.print(F("UI: get throttle #"));
   Serial.println(blinks);
   flash(green, blinks);
-  delay(1000);
-  green.start(constrain(abs(throttle * 20), 1, 20));
+  DELAY(1000);
+  green.start(constrain(ABS(throttle * 20), 1, 20));
   ESC.setLevel(throttle);
   do {
     chuck.update();
-    delay(20);
+    DELAY(20);
     green.run();
     
-    if (abs(chuck.Y) > 0.5) {
+    if (ABS(chuck.Y) > 0.5) {
       throttle += 0.005 * chuck.Y;
-      throttle = constrain(abs(throttle), 0, 1) * sign;
+      throttle = constrain(ABS(throttle), 0, 1) * sign;
       ESC.setLevel(throttle);
-      green.update(constrain(abs(throttle * 20), 1, 20));
+      green.update(constrain(ABS(throttle * 20), 1, 20));
       Serial.println(throttle);
     } 
     
@@ -135,78 +135,78 @@ void ui_getThrottle(byte blinks, byte eeprom_addy, int sign, byte defaultValue) 
   Serial.print(blinks);
   Serial.print(F(" = "));
   Serial.println(throttle);
-  EEPROM.update(eeprom_addy, 100*abs(throttle));
+  EEPROM.update(eeprom_addy, 100*ABS(throttle));
   ESC.setLevel(0);
   green.high();
   flash(red, blinks);
   red.high();
-  delay(1000);
+  DELAY(1000);
 } // ui_getThrottle(addy, blinks)
 
 
 
-// NOTE: the value # flashed is never 0 -- range 1..maxValue
+// NOTE: the value # flashed is +1, can't flash "0" times :/
 int ui_getValue(byte blinks, byte valueAddy, byte defaultValue, byte maxValue) {
   int newValue = readSetting(valueAddy, defaultValue);
   Serial.print(F("getting value #"));
   Serial.print(blinks);
   Serial.println("; use stick up/down to change, C to save");
   flash(green, blinks);
-  delay(1000);
-  flash(green, newValue);
+  DELAY(1000);
+  flash(green, newValue+1);
   Serial.print("Value: ");
-  Serial.println(newValue);
+  Serial.println(newValue+1);
   do {
     chuck.update();
     if (chuck.Y > 0.5) {
       newValue ++;   
       if (newValue > maxValue) {
-        newValue = 1;
+        newValue = 0;
       }
       Serial.print("Value: "); 
-      Serial.println(newValue);
-      flash(green, newValue);
-      delay(20);
+      Serial.println(newValue+1);
+      flash(green, newValue+1);
+      DELAY(20);
       chuck.update();
     } else if (chuck.Y < -0.5) {
       newValue --;
-      if (newValue <= 0) {
+      if (newValue < 0) {
         newValue = maxValue;
       }
       Serial.print("Value: "); 
-      Serial.println(newValue);
-      flash(green, newValue);
-      delay(20);
+      Serial.println(newValue+1);
+      flash(green, newValue+1);
+      DELAY(20);
       chuck.update();
     }
-    delay(20);
+    DELAY(20);
   } while (!chuck.C);
   Serial.print(F("Saving value #"));
   Serial.print(blinks);
   Serial.print(F(" as "));
-  Serial.println(newValue);
+  Serial.println(newValue+1);
   EEPROM.update(valueAddy, newValue);
   green.high();
   flash(red, blinks);
   red.high();
-  delay(1000);
+  DELAY(1000);
   return newValue;
 } // int ui_getValue(byte blinks, byte defaultValue)
 
 
 void showTunaSettings(void) {
-  Serial.print(F("Heli mode: [1 = off, 2 = on]"));
+  Serial.print(F("Heli mode: "));
   Serial.println(readSetting(EEPROM_HELI_MODE_ADDY, 255));
   #ifndef ALLOW_HELI_MODE
     Serial.println("Heli mode disabled");
   #endif 
-  Serial.print(F("Max throttle: [use up/down]"));
+  Serial.print(F("Max throttle: "));
   Serial.println(readSetting(EEPROM_MAXTHROTTLE_ADDY, 255));
-  Serial.print(F("Auto cruise: [press up until the motors start, then down to get the slowest motion]"));
+  Serial.print(F("Auto cruise: "));
   Serial.println(readSetting(EEPROM_AUTOCRUISE_ADDY, 255));
-  Serial.print(F("Drag brake: [press down until you feel the brakes just start to kick in]"));
+  Serial.print(F("Drag brake: "));
   Serial.println(readSetting(EEPROM_DRAGBRAKE_ADDY, 255));
-  Serial.print(F("Acceleration profile: [1:0.25x, 2:0.5x, 3:0.75x, 4:1.0x (default) 5:1.5x, 6:2.0x, 7:raw]"));
+  Serial.print(F("Acceleration profile: "));
   Serial.println(readSetting(EEPROM_ACCELPROFILE_ADDY, 255));
 } // showTunaSettings()
 
@@ -219,23 +219,13 @@ void do_ui() {
   calibrateChuck();
 
   #ifdef ALLOW_HELI_MODE
-    Serial.println(F("Heli mode: [1 = off, 2 = on]"));
-    ui_getValue(1, EEPROM_HELI_MODE_ADDY, 1, 2);    // HELI_MODE ranges 1..2; default 1
+    ui_getValue(1, EEPROM_HELI_MODE_ADDY, 0, 1);    // HELI_MODE ranges 0..1; default 0
   #endif
 
-  Serial.println(F("Max throttle: [use up/down]"));
   ui_getThrottle(2, EEPROM_MAXTHROTTLE_ADDY, 1, 100);
-
-  Serial.println(F("Auto cruise: [press up until the motors start, then down to get the slowest motion]"));
   ui_getThrottle(3, EEPROM_AUTOCRUISE_ADDY, 1, 0);
-  
-  Serial.println(F("Drag brake: [press down until you feel the brakes just start to kick in]"));
   ui_getThrottle(4, EEPROM_DRAGBRAKE_ADDY, -1, 0);
-  
-  Serial.println(F("Acceleration profile: [1:0.25x, 2:0.5x, 3:0.75x, 4:1.0x (default) 5:1.5x, 6:2.0x, 7:raw]"));
-  ui_getValue(5, EEPROM_ACCELPROFILE_ADDY, 4, 7); // accel profile default 4, range 1..7
-
-  Serial.println(F("Finished!"));  
+  ui_getValue(5, EEPROM_ACCELPROFILE_ADDY, 2, 6); // accel profile 0..6; default 2
   flash(red, green, 10);
   showTunaSettings();
   readSettings();
@@ -251,7 +241,7 @@ void tuna() {
   static elapsedMillis lastAttempt = 0;
   
   if (! (chuck.C && chuck.Z) 
-      || abs(throttle.getThrottle()) > THROTTLE_MIN) {
+      || ABS(throttle.getThrottle()) > THROTTLE_MIN) {
     attempts = 0;
     return;
   }

@@ -1,0 +1,19 @@
+Wiiceiver Surf Chuck + Wiiceiver Surf Board is a new *pair* of things.
+
+The Chuck is a gutted / modified Nintendo Nunchuck w/ NRF24L01+ radio; 
+it can run for hours on a small LiPo battery and has better range than
+the Nyko Kama wireless.
+
+The Board is an updated "Wiiceiver" with the NRF24L01+ radio hookup, 
+but no traditional nunchuck port.
+
+Board-side functionality is similar to the traditional Wiiceiver.
+Over time I will add:
+- voltage sensing on the Board / display to Chuck (red/green/yellow 
+  lights to indicate battery remaining)
+- integrated battery control: press a button on the Board to start it,
+  use the Chuck power button to shut it down.
+- pairing / syncing between up to 100 Chucks & 100 Boards
+
+The fun thing about this setup: it doesn't depend on the Nintendo
+Nunchuck; it can be easily integrated into any analog controller.

@@ -41,7 +41,7 @@ class ElectronicSpeedController {
 
 private:
   bool dualESC;
-  Servo _esc1, _esc2;
+  SoftwareServo _esc1, _esc2;
   int angle;                // the angle most recently written to _esc;
   int angleCtr;
   int microseconds;         // the time (ms) most recently written
@@ -59,10 +59,10 @@ public:
       Serial.print(", pin2 #");
       Serial.print(pin2);
     #endif
-    _esc1.attach(pin1, 1000, 2000);
+    _esc1.attach(pin1);
     if (pin2) {
       dualESC = true;
-      _esc2.attach(pin2, 1000, 2000);
+      _esc2.attach(pin2);
       Serial.println("Dual ESC!");
     } else {
       dualESC = false;
@@ -112,7 +112,7 @@ public:
       #ifdef DEBUGGING_ESC
         Serial.print(millis());
         Serial.print(F(": ESC old: "));
-        Serial.print(_esc1.readMicroseconds());
+        // Serial.print(_esc1.readMicroseconds());
         Serial.print(F("us; new angle: "));
         Serial.print(newAngle);
         Serial.print(F(" = "));
@@ -124,20 +124,19 @@ public:
         _esc2.write(angle);
       }
       #ifdef DEBUGGING_ESC
-          Serial.print(F(": ESC now: "));
-          Serial.println(_esc1.readMicroseconds());
+          //Serial.print(F(": ESC now: "));
+          //Serial.println(_esc1.readMicroseconds());
       #endif
       
       lastWrite = millis();
-    } 
-    #ifdef ESC_JITTER
-    else {
+      /*
+    } else {
+      
       if (angleCtr++ > 10) {
-        angleCtr = 0;
         setLevel(level + 0.01);
       }
+      */
     }
-    #endif
   } // void setLevel(float level)
 
 

@@ -170,15 +170,6 @@
         #endif
       } // float rough(goal)
 
-      
-      // "primes" this smoother, if needed;
-      // similar to a conditional rough(goal)
-      float prime(float goal) {
-        if (ceiling < goal) {
-          last = ceiling = goal;
-        }
-      } // float prime(goal)
-
   }; // class Smoove
   
 #endif

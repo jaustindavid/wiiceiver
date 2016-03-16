@@ -62,7 +62,7 @@
 
 
 typedef struct Settings {
-  byte HELI_MODE = 0;
+  bool HELI_MODE = false;
 };
 Settings settings;
 
@@ -133,32 +133,32 @@ byte readSetting(int eeprom_addy, byte default_value) {
 } // byte readSetting(int eeprom_addy, byte default_value)
 
 
-// reads the acceleration profile setting (default: 2) and returns a
+// reads the acceleration profile setting (default: 3) and returns a
 // multiplier [0.5 .. zillion]
 float getProfileMultiplier(void) {
-    byte accelProfile = readSetting(EEPROM_ACCELPROFILE_ADDY, 2);
+    byte accelProfile = readSetting(EEPROM_ACCELPROFILE_ADDY, 4);
     float multiplier = 1.0;
     
     switch (accelProfile) {
-      case 0: 
-        multiplier = 0.5;
+      case 1: 
+        multiplier = 0.25;
         break;
-      case 1:
-        multiplier = 0.75;
+      case 2:
+        multiplier = 0.50;
         break;
       case 3: 
-        multiplier = 1.25;
-        break;
-      case 4:
-        multiplier = 1.5;
+        multiplier = 0.75;
         break;
       case 5:
+        multiplier = 1.5;
+        break;
+      case 6:
         multiplier = 2.0;
         break;
-      case 6: // raw input, basically
+      case 7: // raw input, basically
         multiplier = 100.0;
         break;
-      case 2: // FALLTHROUGH
+      case 4: // FALLTHROUGH
       default:
         multiplier = 1.0;
         break;
@@ -169,7 +169,7 @@ float getProfileMultiplier(void) {
 
 void readSettings(void) {
   #ifdef ALLOW_HELI_MODE
-    settings.HELI_MODE = readSetting(EEPROM_HELI_MODE_ADDY, 0);
+    settings.HELI_MODE = (readSetting(EEPROM_HELI_MODE_ADDY, 1) == 2);
     if (settings.HELI_MODE) {
       Serial.println(F("HELI MODE"));
     }
